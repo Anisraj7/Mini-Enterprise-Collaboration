@@ -90,6 +90,7 @@ export default function CreateTask() {
           >
             <option value="todo">Todo</option>
             <option value="in_progress">In Progress</option>
+            <option value="review">Review</option>
             <option value="done">Done</option>
           </select>
 
@@ -126,3 +127,4 @@ export default function CreateTask() {
     </div>
   );
 }
+

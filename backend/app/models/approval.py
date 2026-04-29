@@ -1,20 +1,19 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 from datetime import datetime
+
 from app.db.database import Base
+
 
 class Approval(Base):
     __tablename__ = "approvals"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, index=True)
     title = Column(String, nullable=False)
-    description = Column(String)
-
-    requested_by = Column(Integer, ForeignKey("users.id"))
-
-    status = Column(String, default="pending")  # pending / approved / rejected
-    current_level = Column(String, default="manager")  # manager → admin
-
+    description = Column(Text)
+    requested_by = Column(Integer, ForeignKey("users.id"), nullable=False)
+    status = Column(String, default="pending", nullable=False)
+    current_level = Column(String, default="manager", nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    user = relationship("User")
+    requester = relationship("User")
