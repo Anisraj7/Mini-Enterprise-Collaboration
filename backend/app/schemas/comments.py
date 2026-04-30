@@ -11,6 +11,7 @@ class CommentOut(BaseModel):
     id: int
     task_id: int
     user_id: int
+    user_name: Optional[str] = None
     content: str
     is_internal: bool
     created_at: datetime

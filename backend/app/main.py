@@ -1,10 +1,19 @@
+import logging
+import time
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.db.database import Base, engine
 from app.routers import activity, approval, auth, comments, dashboard, kanban, tasks, users
 
-app = FastAPI()
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+)
+logger = logging.getLogger("mini_enterprise")
+
+app = FastAPI(title="Mini Enterprise Collaboration Workflow")
 Base.metadata.create_all(bind=engine)
 
 app.include_router(auth.router)
@@ -23,3 +32,18 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def log_requests(request, call_next):
+    started_at = time.perf_counter()
+    response = await call_next(request)
+    duration_ms = (time.perf_counter() - started_at) * 1000
+    logger.info(
+        "%s %s -> %s %.2fms",
+        request.method,
+        request.url.path,
+        response.status_code,
+        duration_ms,
+    )
+    return response

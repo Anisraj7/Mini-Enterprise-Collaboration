@@ -38,6 +38,7 @@ class ApprovalHistoryOut(BaseModel):
     id: int
     approval_id: int
     action_by: int
+    action_by_name: Optional[str] = None
     action: str
     comment: Optional[str] = None
     created_at: datetime

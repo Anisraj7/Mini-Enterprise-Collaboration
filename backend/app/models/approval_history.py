@@ -17,3 +17,7 @@ class ApprovalHistory(Base):
 
     approval = relationship("Approval")
     user = relationship("User")
+
+    @property
+    def action_by_name(self):
+        return self.user.name if self.user else None

@@ -16,3 +16,7 @@ class Comment(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User")
+
+    @property
+    def user_name(self):
+        return self.user.name if self.user else None

@@ -6,8 +6,9 @@ export default function Approval() {
   const [approvals, setApprovals] = useState([]);
   const [history, setHistory] = useState([]);
   const [selectedApproval, setSelectedApproval] = useState(null);
-  const [comment, setComment] = useState("");
+  const [commentsByApproval, setCommentsByApproval] = useState({});
   const [form, setForm] = useState({ title: "", description: "" });
+  const [user, setUser] = useState(null);
   const [error, setError] = useState("");
 
   const fetchApprovals = async () => {
@@ -16,7 +17,16 @@ export default function Approval() {
   };
 
   useEffect(() => {
-    fetchApprovals().catch((err) => setError(err.response?.data?.detail || "Unable to load approvals."));
+    const loadPage = async () => {
+      const [userResponse, approvalsResponse] = await Promise.all([
+        API.get("/auth/me"),
+        API.get("/approvals/"),
+      ]);
+      setUser(userResponse.data);
+      setApprovals(approvalsResponse.data);
+    };
+
+    loadPage().catch((err) => setError(err.response?.data?.detail || "Unable to load approvals."));
   }, []);
 
   const submitApproval = async () => {
@@ -35,14 +45,16 @@ export default function Approval() {
   };
 
   const handleAction = async (id, action) => {
-    if (action === "reject" && !comment.trim()) {
+    const actionComment = commentsByApproval[id] || "";
+
+    if (action === "reject" && !actionComment.trim()) {
       setError("Comment required for rejection.");
       return;
     }
 
     try {
-      await API.patch(`/approvals/${id}/action`, { action, comment });
-      setComment("");
+      await API.patch(`/approvals/${id}/action`, { action, comment: actionComment });
+      setCommentsByApproval((prev) => ({ ...prev, [id]: "" }));
       setError("");
       await fetchApprovals();
       if (selectedApproval === id) await loadHistory(id);
@@ -52,9 +64,24 @@ export default function Approval() {
   };
 
   const loadHistory = async (id) => {
-    const res = await API.get(`/approvals/${id}/history`);
-    setHistory(res.data);
-    setSelectedApproval(id);
+    try {
+      const res = await API.get(`/approvals/${id}/history`);
+      setHistory(res.data);
+      setSelectedApproval(id);
+      setError("");
+    } catch (err) {
+      setError(err.response?.data?.detail || "Unable to load approval history.");
+    }
+  };
+
+  const updateActionComment = (id, value) => {
+    setCommentsByApproval((prev) => ({ ...prev, [id]: value }));
+  };
+
+  const canActOnApproval = (approval) => {
+    if (!user || approval.status === "approved" || approval.status === "rejected") return false;
+    if (user.role === "admin") return true;
+    return user.role === "manager" && approval.current_level === "manager";
   };
 
   return (
@@ -72,8 +99,11 @@ export default function Approval() {
         </div>
 
         <div className="space-y-4">
-          {approvals.map((approval) => (
-            <div key={approval.id} className="bg-white p-5 rounded-xl shadow">
+          {approvals.map((approval) => {
+            const canAct = canActOnApproval(approval);
+
+            return (
+              <div key={approval.id} className="bg-white p-5 rounded-xl shadow">
               <div className="flex flex-wrap justify-between gap-3 items-center">
                 <div>
                   <h2 className="font-semibold text-lg">{approval.title}</h2>
@@ -88,12 +118,23 @@ export default function Approval() {
 
               <p className="text-xs text-gray-400 mt-2">Level: {approval.current_level}</p>
 
-              <input placeholder="Action comment (required for reject)" value={comment} onChange={(e) => setComment(e.target.value)} className="border mt-3 w-full p-2 rounded" />
+              {canAct && (
+                <input
+                  placeholder="Action comment (required for reject)"
+                  value={commentsByApproval[approval.id] || ""}
+                  onChange={(e) => updateActionComment(approval.id, e.target.value)}
+                  className="border mt-3 w-full p-2 rounded"
+                />
+              )}
 
               <div className="flex flex-wrap gap-2 mt-4">
-                <button onClick={() => handleAction(approval.id, "approve")} className="bg-green-500 text-white px-3 py-1 rounded">Approve</button>
-                <button onClick={() => handleAction(approval.id, "reject")} className="bg-red-500 text-white px-3 py-1 rounded">Reject</button>
-                <button onClick={() => handleAction(approval.id, "hold")} className="bg-gray-500 text-white px-3 py-1 rounded">Hold</button>
+                {canAct && (
+                  <>
+                    <button onClick={() => handleAction(approval.id, "approve")} className="bg-green-500 text-white px-3 py-1 rounded">Approve</button>
+                    <button onClick={() => handleAction(approval.id, "reject")} className="bg-red-500 text-white px-3 py-1 rounded">Reject</button>
+                    <button onClick={() => handleAction(approval.id, "hold")} className="bg-gray-500 text-white px-3 py-1 rounded">Hold</button>
+                  </>
+                )}
                 <button onClick={() => loadHistory(approval.id)} className="bg-indigo-500 text-white px-3 py-1 rounded">History</button>
               </div>
 
@@ -102,7 +143,7 @@ export default function Approval() {
                   <h3 className="font-semibold mb-2">History</h3>
                   {history.map((item) => (
                     <div key={item.id} className="mb-2 text-sm">
-                      <p><b>{item.action}</b> by User {item.action_by}</p>
+                      <p><b>{item.action}</b> by {item.action_by_name || `User ${item.action_by}`}</p>
                       <p className="text-gray-500">{item.comment || "No comment"}</p>
                       <p className="text-xs text-gray-400">{new Date(item.created_at).toLocaleString()}</p>
                     </div>
@@ -110,8 +151,9 @@ export default function Approval() {
                   {history.length === 0 && <p className="text-sm text-gray-500">No history yet</p>}
                 </div>
               )}
-            </div>
-          ))}
+              </div>
+            );
+          })}
           {approvals.length === 0 && <p className="text-sm text-gray-500">No approval requests found.</p>}
         </div>
       </div>

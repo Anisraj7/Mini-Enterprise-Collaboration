@@ -40,9 +40,22 @@ export default function Dashboard() {
       return;
     }
 
-    loadDashboard().catch((err) => {
-      setError(err.response?.data?.detail || "Unable to load dashboard.");
-    });
+    const loadInitialDashboard = async () => {
+      try {
+        const [userResponse, tasksResponse, summaryResponse] = await Promise.all([
+          API.get("/auth/me"),
+          API.get("/tasks/"),
+          API.get("/dashboard/summary"),
+        ]);
+        setUser(userResponse.data);
+        setTasks(tasksResponse.data);
+        setSummary(summaryResponse.data);
+      } catch (err) {
+        setError(err.response?.data?.detail || "Unable to load dashboard.");
+      }
+    };
+
+    loadInitialDashboard();
   }, [navigate]);
 
   const handleDelete = async (id) => {

@@ -1,4 +1,14 @@
 import { useEffect, useState } from "react";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 import API from "../api/axios";
 import Navbar from "../components/Navbar";
 
@@ -16,9 +26,66 @@ const validFlow = {
   done: [],
 };
 
+function KanbanColumn({ column, children }) {
+  const { isOver, setNodeRef } = useDroppable({ id: column.id });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`${column.bg} rounded-xl p-4 min-h-[500px] shadow-inner transition ${
+        isOver ? "ring-2 ring-indigo-500" : ""
+      }`}
+    >
+      <div className={`${column.header} text-white text-center py-2 rounded-lg mb-4 font-semibold`}>
+        {column.label}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function TaskCard({ task, onOpen, isOverlay = false }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    isDragging,
+  } = useDraggable({
+    id: String(task.id),
+    data: {
+      task,
+      currentStatus: task.status,
+    },
+    disabled: isOverlay,
+  });
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
+      onClick={() => onOpen(task)}
+      className={`bg-white p-4 mb-3 rounded-xl shadow hover:shadow-lg cursor-grab active:cursor-grabbing border-l-4 ${
+        task.priority === "high" ? "border-red-500" : task.priority === "medium" ? "border-yellow-500" : "border-green-500"
+      } ${isDragging ? "opacity-40" : ""} ${isOverlay ? "w-72 shadow-xl" : ""}`}
+    >
+      <h3 className="font-semibold">{task.title}</h3>
+      <p className="text-xs mt-2 text-gray-500">Assigned: {task.assigned_to_name || "Unassigned"}</p>
+      <p className="text-xs text-gray-400">Due: {task.due_date ? new Date(task.due_date).toLocaleDateString() : "No deadline"}</p>
+    </div>
+  );
+}
+
 export default function KanbanBoard() {
   const [tasks, setTasks] = useState({ todo: [], in_progress: [], review: [], done: [] });
   const [selectedTask, setSelectedTask] = useState(null);
+  const [activeTask, setActiveTask] = useState(null);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
   const [isInternal, setIsInternal] = useState(false);
@@ -31,14 +98,40 @@ export default function KanbanBoard() {
     setTasks({ todo: [], in_progress: [], review: [], done: [], ...res.data });
   };
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
+
   useEffect(() => {
-    fetchTasks().catch((err) => setError(err.response?.data?.detail || "Unable to load Kanban board."));
+    const loadInitialTasks = async () => {
+      try {
+        const res = await API.get("/tasks/kanban");
+        setTasks({ todo: [], in_progress: [], review: [], done: [], ...res.data });
+      } catch (err) {
+        setError(err.response?.data?.detail || "Unable to load Kanban board.");
+      }
+    };
+
+    loadInitialTasks();
   }, []);
 
-  const handleDrop = async (event, newStatus) => {
-    event.preventDefault();
-    const taskId = Number(event.dataTransfer.getData("taskId"));
-    const currentStatus = event.dataTransfer.getData("currentStatus");
+  const handleDragStart = (event) => {
+    setActiveTask(event.active.data.current?.task || null);
+  };
+
+  const handleDragEnd = async (event) => {
+    const { active, over } = event;
+    setActiveTask(null);
+
+    if (!over) return;
+
+    const taskId = Number(active.id);
+    const currentStatus = active.data.current?.currentStatus;
+    const newStatus = over.id;
 
     if (!taskId || currentStatus === newStatus) return;
     if (!validFlow[currentStatus]?.includes(newStatus)) {
@@ -55,10 +148,19 @@ export default function KanbanBoard() {
     }
   };
 
+  const handleDragCancel = () => {
+    setActiveTask(null);
+  };
+
   const loadComments = async (task) => {
-    setSelectedTask(task);
-    const res = await API.get(`/tasks/${task.id}/comments`);
-    setComments(res.data);
+    try {
+      setSelectedTask(task);
+      const res = await API.get(`/tasks/${task.id}/comments`);
+      setComments(res.data);
+      setError("");
+    } catch (err) {
+      setError(err.response?.data?.detail || "Unable to load comments.");
+    }
   };
 
   const addComment = async () => {
@@ -76,6 +178,12 @@ export default function KanbanBoard() {
       setError(err.response?.data?.detail || "Unable to add comment.");
     }
   };
+
+  const visibleTasks = (columnId) => (
+    tasks[columnId] || []
+  )
+    .filter((task) => priorityFilter === "all" || task.priority === priorityFilter)
+    .filter((task) => !userFilter || task.assigned_to_name?.toLowerCase().includes(userFilter.toLowerCase()));
 
   return (
     <div className="bg-gray-50 min-h-screen">
@@ -99,42 +207,25 @@ export default function KanbanBoard() {
 
         {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
 
-        <div className="grid gap-6 md:grid-cols-4">
-          {columns.map((col) => (
-            <div
-              key={col.id}
-              onDragOver={(event) => event.preventDefault()}
-              onDrop={(event) => handleDrop(event, col.id)}
-              className={`${col.bg} rounded-xl p-4 min-h-[500px] shadow-inner`}
-            >
-              <div className={`${col.header} text-white text-center py-2 rounded-lg mb-4 font-semibold`}>
-                {col.label}
-              </div>
-
-              {(tasks[col.id] || [])
-                .filter((task) => priorityFilter === "all" || task.priority === priorityFilter)
-                .filter((task) => !userFilter || task.assigned_to_name?.toLowerCase().includes(userFilter.toLowerCase()))
-                .map((task) => (
-                  <div
-                    key={task.id}
-                    draggable
-                    onDragStart={(event) => {
-                      event.dataTransfer.setData("taskId", task.id);
-                      event.dataTransfer.setData("currentStatus", task.status);
-                    }}
-                    onClick={() => loadComments(task)}
-                    className={`bg-white p-4 mb-3 rounded-xl shadow hover:shadow-lg cursor-pointer border-l-4 ${
-                      task.priority === "high" ? "border-red-500" : task.priority === "medium" ? "border-yellow-500" : "border-green-500"
-                    }`}
-                  >
-                    <h3 className="font-semibold">{task.title}</h3>
-                    <p className="text-xs mt-2 text-gray-500">Assigned: {task.assigned_to_name || "Unassigned"}</p>
-                    <p className="text-xs text-gray-400">Due: {task.due_date ? new Date(task.due_date).toLocaleDateString() : "No deadline"}</p>
-                  </div>
+        <DndContext
+          sensors={sensors}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
+        >
+          <div className="grid gap-6 md:grid-cols-4">
+            {columns.map((col) => (
+              <KanbanColumn key={col.id} column={col}>
+                {visibleTasks(col.id).map((task) => (
+                  <TaskCard key={task.id} task={task} onOpen={loadComments} />
                 ))}
-            </div>
-          ))}
-        </div>
+              </KanbanColumn>
+            ))}
+          </div>
+          <DragOverlay>
+            {activeTask ? <TaskCard task={activeTask} onOpen={() => {}} isOverlay /> : null}
+          </DragOverlay>
+        </DndContext>
       </div>
 
       {selectedTask && (
@@ -150,7 +241,7 @@ export default function KanbanBoard() {
                 <div key={comment.id} className="bg-gray-100 p-2 rounded">
                   <p>{comment.content}</p>
                   <p className="text-xs text-gray-400">
-                    User {comment.user_id} - {comment.is_internal ? "Internal" : "Public"} - {new Date(comment.created_at).toLocaleString()}
+                    {comment.user_name || `User ${comment.user_id}`} - {comment.is_internal ? "Internal" : "Public"} - {new Date(comment.created_at).toLocaleString()}
                   </p>
                 </div>
               ))}
