@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.db.database import Base, engine
-from app.routers import activity, approval, auth, comments, dashboard, kanban, tasks, users
+from app.routers import activity, approval, auth, comments, dashboard, kanban, tasks, users, document, audit, notification
 
 logging.basicConfig(
     level=logging.INFO,
@@ -24,6 +24,9 @@ app.include_router(comments.router)
 app.include_router(approval.router)
 app.include_router(dashboard.router)
 app.include_router(activity.router)
+app.include_router(document.router)
+app.include_router(audit.router)
+app.include_router(notification.router)
 
 app.add_middleware(
     CORSMiddleware,

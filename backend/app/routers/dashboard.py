@@ -21,3 +21,14 @@ def task_distribution(db: Session = Depends(get_db), user=Depends(get_current_us
 @router.get("/approvals")
 def approvals(db: Session = Depends(get_db), user=Depends(get_current_user)):
     return get_approval_stats(db)
+
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+from app.models.task import Task
+from app.services.ai_service import generate_ai_summary
+
+
+# @router.get("/ai-summary")
+# def ai_summary(db: Session = Depends(get_db)):
+#     tasks = db.query(Task).all()
+#     return generate_ai_summary(tasks)
