@@ -2,8 +2,10 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.models.activity_log import ActivityLog
+from app.models.audit import AuditLog
 from app.models.comments import Comment
 from app.models.task import Task
+from app.services.notification_service import create_notification
 from app.services.task_service import can_access_task
 
 
@@ -25,6 +27,9 @@ def create_comment(task_id: int, data, user, db: Session):
     db.add(comment)
     db.flush()
     db.add(ActivityLog(user_id=user.id, action="COMMENT_ADDED", entity_type="COMMENT", entity_id=comment.id))
+    db.add(AuditLog(user_id=user.id, action="COMMENT_ADDED", entity="COMMENT", entity_id=comment.id))
+    for recipient_id in {task.created_by_id, task.assigned_to_id} - {None, user.id}:
+        create_notification(db, recipient_id, f"New comment on task: {task.title}")
     db.commit()
     db.refresh(comment)
     return comment

@@ -30,7 +30,7 @@ export default function AssignTask() {
       await API.patch(`/tasks/${id}/assign`, {
         assigned_to_id: Number(selectedUser),
       });
-      navigate("/dashboard");
+      navigate("/kanban");
     } catch (err) {
       setError(err.response?.data?.detail || "Unable to assign task.");
     }

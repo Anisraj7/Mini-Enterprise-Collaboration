@@ -4,9 +4,11 @@ from sqlalchemy.orm import Session
 from app.core.dependencies import get_current_user, require_role
 from app.db.database import get_db
 from app.models.activity_log import ActivityLog
+from app.models.audit import AuditLog
 from app.models.task import Task
 from app.models.user import User
 from app.schemas.task import TaskAssign, TaskCreate, TaskOut, TaskStatusUpdate, TaskUpdate
+from app.services.notification_service import create_notification
 from app.services.task_service import apply_task_status, can_access_task, get_kanban_board, visible_tasks_query
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
@@ -48,6 +50,9 @@ def create_task(
     db.add(new_task)
     db.flush()
     db.add(ActivityLog(user_id=current_user.id, action="TASK_CREATED", entity_type="TASK", entity_id=new_task.id))
+    db.add(AuditLog(user_id=current_user.id, action="TASK_CREATED", entity="TASK", entity_id=new_task.id))
+    if new_task.assigned_to_id:
+        create_notification(db, new_task.assigned_to_id, f"Task assigned: {new_task.title}")
     db.commit()
     db.refresh(new_task)
     return new_task
@@ -116,6 +121,7 @@ def update_task(
     if changes:
         task.updated_by = current_user.id
         db.add(ActivityLog(user_id=current_user.id, action="TASK_UPDATED", entity_type="TASK", entity_id=task.id))
+        db.add(AuditLog(user_id=current_user.id, action="TASK_UPDATED", entity="TASK", entity_id=task.id))
 
     db.commit()
     db.refresh(task)
@@ -145,6 +151,7 @@ def delete_task(
     task = _get_task_or_404(db, task_id)
     db.delete(task)
     db.add(ActivityLog(user_id=current_user.id, action="TASK_DELETED", entity_type="TASK", entity_id=task_id))
+    db.add(AuditLog(user_id=current_user.id, action="TASK_DELETED", entity="TASK", entity_id=task_id))
     db.commit()
     return {"message": "Task deleted"}
 
@@ -164,6 +171,8 @@ def assign_task(
     task.assigned_to_id = assignment.assigned_to_id
     task.updated_by = current_user.id
     db.add(ActivityLog(user_id=current_user.id, action="TASK_ASSIGNED", entity_type="TASK", entity_id=task.id))
+    db.add(AuditLog(user_id=current_user.id, action="TASK_ASSIGNED", entity="TASK", entity_id=task.id))
+    create_notification(db, assignment.assigned_to_id, f"Task assigned: {task.title}")
     db.commit()
     db.refresh(task)
     return task

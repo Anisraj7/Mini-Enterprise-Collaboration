@@ -2,9 +2,11 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.models.activity_log import ActivityLog
+from app.models.audit import AuditLog
 from app.models.approval import Approval
 from app.models.approval_history import ApprovalHistory
 from app.models.user import User
+from app.services.notification_service import create_notification
 
 APPROVAL_ACTIONS = ("approve", "reject", "hold")
 FINAL_STATUSES = ("approved", "rejected")
@@ -30,6 +32,10 @@ def create_approval(data, user: User, db: Session):
     db.add(approval)
     db.flush()
     db.add(ActivityLog(user_id=user.id, action="APPROVAL_SUBMITTED", entity_type="APPROVAL", entity_id=approval.id))
+    db.add(AuditLog(user_id=user.id, action="APPROVAL_SUBMITTED", entity="APPROVAL", entity_id=approval.id))
+    reviewers = db.query(User).filter(User.role.in_(["manager", "admin"]), User.id != user.id).all()
+    for reviewer in reviewers:
+        create_notification(db, reviewer.id, f"Approval requested: {approval.title}")
     db.commit()
     db.refresh(approval)
     return approval
@@ -85,6 +91,8 @@ def take_action(approval_id: int, data, user: User, db: Session):
             entity_id=approval.id,
         )
     )
+    db.add(AuditLog(user_id=user.id, action=f"APPROVAL_{action.upper()}", entity="APPROVAL", entity_id=approval.id))
+    create_notification(db, approval.requested_by, f"Approval {action}: {approval.title}")
     db.commit()
     db.refresh(approval)
     return approval

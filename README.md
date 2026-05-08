@@ -1,6 +1,6 @@
 # Mini Enterprise Collaboration Workflow
 
-A role-based enterprise workflow application built with FastAPI and React. The project covers Phase 1 task management foundations and Phase 2 workflow/collaboration features.
+A role-based enterprise workflow application built with FastAPI and React. The project now covers task management, workflow collaboration, and Phase 3 enterprise features: document handling, audit logs, notifications, real-time updates, and dashboard intelligence.
 
 ## Tech Stack
 
@@ -10,9 +10,11 @@ Backend:
 - Pydantic
 - Alembic
 - PostgreSQL / MySQL compatible SQLAlchemy setup
+- File upload/download handling
 - JWT authentication with `python-jose`
 - Password hashing with bcrypt via Passlib
 - Python request logging
+- WebSockets for live notifications
 
 Frontend:
 - React.js
@@ -21,14 +23,16 @@ Frontend:
 - React Router DOM
 - Recharts
 - `@dnd-kit` for Kanban drag and drop
+- React Hot Toast
+- Lucide React icons
 
 Note: Phase 2 mentioned React Beautiful DnD. This implementation uses `@dnd-kit`, a maintained React drag/drop library already included in the project dependencies and suitable for the current React version.
 
 ## User Roles
 
-- Admin: full access, can manage all tasks, assign users, delete tasks, view users, and provide final approvals.
-- Manager: can create/manage own tasks, assign own tasks, monitor workflow, and approve manager-level approval requests.
-- Employee: can view assigned tasks, update allowed task status transitions, submit approvals, and add public comments.
+- Admin: full access, can manage tasks, assign users, delete tasks, view users, view audit logs, access documents, and provide final approvals.
+- Manager: can create/manage own tasks, assign own tasks, monitor workflow, access team task documents, and approve manager-level requests.
+- Employee: can view assigned tasks, update allowed task status transitions, upload/download authorized documents, submit approvals, and add public comments.
 
 ## Backend Features
 
@@ -42,7 +46,12 @@ Note: Phase 2 mentioned React Beautiful DnD. This implementation uses `@dnd-kit`
 - Task status history tracking
 - Task comments with public/internal notes
 - Activity logging for task, comment, and approval actions
+- Immutable-style audit logs for enterprise actions
 - Multi-level approval workflow with audit history
+- Document upload, versioning, task document listing, and secure download
+- User-scoped notifications with read/unread state
+- WebSocket endpoint for live notification delivery
+- AI-style dashboard summary for pending, high-priority, and delayed tasks
 - Dashboard summary and task distribution APIs
 - HTTP request logging with method, path, status, and duration
 
@@ -55,10 +64,11 @@ Note: Phase 2 mentioned React Beautiful DnD. This implementation uses `@dnd-kit`
 - Create and edit task screens
 - User listing for admins
 - Kanban board with drag/drop
-- Task comments modal
+- Task comments, documents, and assignment actions in the Kanban modal
 - Approval submission and action UI
 - Approval history with actor names
 - Activity log page
+- Dashboard notification panel and activity feed
 
 ## API Overview
 
@@ -96,9 +106,25 @@ Dashboard:
 - `GET /dashboard/summary`
 - `GET /dashboard/task-distribution`
 - `GET /dashboard/approvals`
+- `GET /dashboard/ai-summary`
 
 Activity:
 - `GET /activity/`
+
+Documents:
+- `POST /documents/upload?task_id={task_id}`
+- `GET /documents/task/{task_id}`
+- `GET /documents/{document_id}`
+
+Audit Logs:
+- `GET /audit-logs/`
+
+Notifications:
+- `GET /notifications/`
+- `PATCH /notifications/{notification_id}/read`
+
+Realtime:
+- `WS /ws/{user_id}`
 
 ## Setup
 
@@ -110,11 +136,17 @@ python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
 copy .env.example .env
-alembic upgrade head
+python -m alembic upgrade head
 uvicorn app.main:app --reload
 ```
 
 Update `backend/.env` with your local database URL and secret key before running migrations. The `.env` file is ignored by Git; commit `backend/.env.example` instead.
+
+Example PostgreSQL URL:
+
+```env
+DATABASE_URL=postgresql://postgres:password@localhost/enterprisecollab
+```
 
 Frontend:
 
@@ -144,6 +176,7 @@ Backend:
 ```bash
 cd backend
 python -m compileall app
+python -m alembic current
 ```
 
 ## Submission Checklist

@@ -1,8 +1,10 @@
 from fastapi import HTTPException, status
 from sqlalchemy import or_
+from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import Session
 
 from app.models.activity_log import ActivityLog
+from app.models.audit import AuditLog
 from app.models.task import Task, TaskHistory
 from app.models.user import User
 
@@ -74,6 +76,7 @@ def apply_task_status(task: Task, new_status: str, user: User, db: Session) -> T
                 entity_id=task.id,
             )
         )
+        db.add(AuditLog(user_id=user.id, action="TASK_STATUS_UPDATED", entity="TASK", entity_id=task.id))
 
     return task
 
@@ -89,7 +92,27 @@ def visible_tasks_query(db: Session, user: User):
 
 def get_kanban_board(user: User, db: Session):
     board = {status_name: [] for status_name in WORKFLOW_STATUSES}
-    tasks = visible_tasks_query(db, user).order_by(Task.updated_at.desc()).all()
+    tasks = (
+        visible_tasks_query(db, user)
+        .options(joinedload(Task.assigned_to))
+        .order_by(Task.updated_at.desc())
+        .all()
+    )
     for task in tasks:
-        board.setdefault(task.status, []).append(task)
+        board.setdefault(task.status, []).append(
+            {
+                "id": task.id,
+                "title": task.title,
+                "description": task.description,
+                "status": task.status,
+                "priority": task.priority,
+                "due_date": task.due_date,
+                "created_by_id": task.created_by_id,
+                "assigned_to_id": task.assigned_to_id,
+                "assigned_to_name": task.assigned_to.name if task.assigned_to else None,
+                "updated_by": task.updated_by,
+                "created_at": task.created_at,
+                "updated_at": task.updated_at,
+            }
+        )
     return board

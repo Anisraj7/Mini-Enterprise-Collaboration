@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.models.approval import Approval
 from app.models.task import Task
+from app.services.ai_service import generate_ai_summary
 from app.services.task_service import WORKFLOW_STATUSES, visible_tasks_query
 
 
@@ -21,12 +22,14 @@ def get_dashboard_summary(user, db: Session):
     if user.role == "employee":
         approval_query = approval_query.filter(Approval.requested_by == user.id)
 
+    tasks = query.all()
     return {
         "total_tasks": total_tasks,
         "tasks_by_status": status_counts,
         "status_distribution": status_counts,
         "completed_tasks": status_counts.get("done", 0),
         "pending_approvals": approval_query.count(),
+        **generate_ai_summary(tasks),
     }
 
 

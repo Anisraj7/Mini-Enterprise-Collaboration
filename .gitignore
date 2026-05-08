@@ -17,6 +17,9 @@ __pycache__/
 .ruff_cache/
 venv/
 .venv/
+*.db
+*.sqlite
+*.sqlite3
 
 # Node
 node_modules/
@@ -35,3 +38,8 @@ logs/
 
 # Archives/build artifacts
 *.zip
+
+# App runtime files
+backend/uploads/
+backend/enterprise_collab.db
+backend/_route_check.db
