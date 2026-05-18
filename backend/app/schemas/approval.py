@@ -20,12 +20,21 @@ class ApprovalAction(BaseModel):
     action: str
     comment: Optional[str] = None
 
+    @field_validator("action")
+    @classmethod
+    def validate_action(cls, value: str):
+        normalized = value.strip().lower()
+        if normalized not in {"approve", "reject", "hold"}:
+            raise ValueError("Unsupported approval action")
+        return normalized
+
 
 class ApprovalOut(BaseModel):
     id: int
     title: str
     description: Optional[str] = None
     requested_by: int
+    requested_by_name: Optional[str] = None
     status: str
     current_level: str
     created_at: datetime

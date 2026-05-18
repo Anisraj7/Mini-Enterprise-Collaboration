@@ -1,48 +1,162 @@
 from fastapi import HTTPException, status
+from fastapi.encoders import jsonable_encoder
+
 from sqlalchemy.orm import Session
 
-from app.models.activity_log import ActivityLog
-from app.models.audit import AuditLog
+from fastapi_pagination.ext.sqlalchemy import paginate
+
+from app.core.cache import (
+    cache_get,
+    cache_set,
+    invalidate_read_caches,
+)
+
 from app.models.comments import Comment
-from app.models.task import Task
-from app.services.notification_service import create_notification
-from app.services.task_service import can_access_task
+
+from app.services.notification_service import (
+    create_notification,
+)
+from app.services.event_log_service import record_event
+
+from app.services.task_service import (
+    can_access_task,
+)
+
+from app.repository.comment_repository import (
+    get_task_by_id,
+    comments_query,
+    create_comment_repository,
+    commit_refresh,
+)
 
 
-def create_comment(task_id: int, data, user, db: Session):
-    task = db.query(Task).filter(Task.id == task_id).first()
+def create_comment_service(
+    task_id: int,
+    data,
+    user,
+    db: Session,
+):
+
+    task = get_task_by_id(
+        db,
+        task_id,
+    )
+
     if not task:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found",
+        )
+
     if not can_access_task(task, user):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
-    if data.is_internal and user.role == "employee":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Employees cannot add internal comments")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions",
+        )
+
+    if (
+        data.is_internal
+        and user.role == "employee"
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Employees cannot add internal comments",
+        )
 
     comment = Comment(
         task_id=task_id,
         user_id=user.id,
         content=data.content,
         is_internal=bool(data.is_internal),
+        organization_id=user.organization_id,
     )
-    db.add(comment)
-    db.flush()
-    db.add(ActivityLog(user_id=user.id, action="COMMENT_ADDED", entity_type="COMMENT", entity_id=comment.id))
-    db.add(AuditLog(user_id=user.id, action="COMMENT_ADDED", entity="COMMENT", entity_id=comment.id))
-    for recipient_id in {task.created_by_id, task.assigned_to_id} - {None, user.id}:
-        create_notification(db, recipient_id, f"New comment on task: {task.title}")
-    db.commit()
-    db.refresh(comment)
+
+    create_comment_repository(
+        db,
+        comment,
+    )
+
+    record_event(
+        db,
+        user_id=user.id,
+        action="COMMENT_ADDED",
+        entity_type="COMMENT",
+        entity_id=comment.id,
+        organization_id=user.organization_id,
+    )
+
+    for recipient_id in {
+        task.created_by_id,
+        task.assigned_to_id,
+    } - {
+        None,
+        user.id,
+    }:
+        create_notification(
+            db,
+            recipient_id,
+            f"New comment on task: {task.title}",
+            user.organization_id,
+        )
+
+    commit_refresh(
+        db,
+        comment,
+    )
+
+    invalidate_read_caches()
+
     return comment
 
 
-def get_comments(task_id: int, user, db: Session):
-    task = db.query(Task).filter(Task.id == task_id).first()
-    if not task:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
-    if not can_access_task(task, user):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
+def get_comments_service(
+    task_id: int,
+    user,
+    db: Session,
+):
 
-    query = db.query(Comment).filter(Comment.task_id == task_id)
-    if user.role == "employee":
-        query = query.filter(Comment.is_internal.is_(False))
-    return query.order_by(Comment.created_at.desc()).all()
+    cache_key = (
+        f"comments:list:"
+        f"user:{user.id}:"
+        f"role:{user.role}:"
+        f"task:{task_id}"
+    )
+
+    cached = cache_get(cache_key)
+
+    if cached:
+        return cached
+
+    task = get_task_by_id(
+        db,
+        task_id,
+    )
+
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found",
+        )
+
+    if not can_access_task(task, user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions",
+        )
+
+    query = comments_query(
+        db,
+        task_id,
+        user,
+    )
+
+    result = paginate(query)
+
+    result = jsonable_encoder(result)
+
+    cache_set(
+        cache_key,
+        result,
+    )
+
+    return result

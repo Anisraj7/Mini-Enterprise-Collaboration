@@ -1,30 +1,104 @@
-from fastapi import APIRouter, UploadFile, Depends, HTTPException, status
+from fastapi import (
+    APIRouter,
+    UploadFile,
+    Depends,
+    File,
+    Request,
+)
+
 from fastapi.responses import FileResponse
+
+from typing import Optional
+
+
 from sqlalchemy.orm import Session
-from app.core.dependencies import get_current_user
-from app.models.audit import AuditLog
-from app.schemas.document import DocumentOut
-from app.services.document_service import get_document, get_task_documents, upload_document
+
+from fastapi_pagination import Page
+
+from app.core.permissions import (
+    get_current_user,
+    require_role,
+)
+
+from app.core.rate_limit import limiter
+
 from app.db.database import get_db
-import os
 
-router = APIRouter(prefix="/documents", tags=["Documents"])
+from app.schemas.document import DocumentOut
 
-@router.post("/upload", response_model=DocumentOut)
-def upload(file: UploadFile, task_id: int, db: Session = Depends(get_db), user=Depends(get_current_user)):
-    doc = upload_document(db, file, user, task_id)
-    db.add(AuditLog(user_id=user.id, action="DOCUMENT_UPLOADED", entity="DOCUMENT", entity_id=doc.id))
-    db.commit()
-    db.refresh(doc)
-    return doc
+from app.services.document_service import (
+    upload_document_service,
+    get_task_documents_service,
+    get_document_service,
+)
 
-@router.get("/task/{task_id}", response_model=list[DocumentOut])
-def task_documents(task_id: int, db: Session = Depends(get_db), user=Depends(get_current_user)):
-    return get_task_documents(db, task_id, user)
+router = APIRouter(
+    prefix="/documents",
+    tags=["Documents"],
+)
+
+
+@router.post(
+    "/upload",
+    response_model=DocumentOut,
+)
+@limiter.limit("20/minute")
+async def upload(
+    request: Request,
+    file: UploadFile = File(...),
+    task_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+    user=Depends(
+        require_role([
+            "admin",
+            "manager",
+            "employee",
+        ])
+    ),
+):
+    return await upload_document_service(
+        db,
+        file,
+        user,
+        task_id,
+    )
+
+
+@router.get(
+    "/task/{task_id}",
+    response_model=Page[DocumentOut],
+)
+@limiter.limit("60/minute")
+def task_documents(
+    request: Request,
+    task_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    return get_task_documents_service(
+        db,
+        task_id,
+        user,
+    )
+
 
 @router.get("/{document_id}")
-def download(document_id: int, db: Session = Depends(get_db), user=Depends(get_current_user)):
-    doc = get_document(db, document_id, user)
-    if not os.path.exists(doc.file_path):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File missing")
-    return FileResponse(doc.file_path, filename=doc.file_name)
+@limiter.limit("30/minute")
+def download(
+    request: Request,
+    document_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+
+    doc = get_document_service(
+        db,
+        document_id,
+        user,
+    )
+
+    return FileResponse(
+        path=doc.file_path,
+        filename=doc.file_name,
+        media_type="application/octet-stream",
+    )

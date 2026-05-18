@@ -1,50 +1,136 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    Request,
+    status,
+)
+
 from fastapi.security import OAuth2PasswordRequestForm
+
 from sqlalchemy.orm import Session
+
+from pydantic import BaseModel
+
 from app.core.dependencies import get_current_user
-from app.core.security import create_access_token, hash_password, verify_password
+
+from app.core.rate_limit import limiter
+
 from app.db.database import get_db
+
 from app.models.user import User
-from app.schemas.token import Token
-from app.schemas.user import UserCreate, UserOut
 
+from app.schemas.user import (
+    UserCreate,
+    UserOut,
+)
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+from app.schemas.password_reset import (
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
+)
 
+from app.services.auth_service import (
+    login_service,
+    refresh_access_token_service,
+    forgot_password_service,
+    reset_password_service,
+  
+)
 
-@router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
-def register(user: UserCreate, db: Session = Depends(get_db)):
-    existing_user = db.query(User).filter(User.email == user.email).first()
-    if existing_user:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
-
-    new_user = User(
-        name=user.name,
-        email=user.email,
-        role=user.role.value,
-        hashed_password=hash_password(user.password),
+from app.services.user_service import (
+    register_service,
+    get_me_service,
     )
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return new_user
+
+router = APIRouter(
+    prefix="/auth",
+    tags=["Auth"],
+)
 
 
-@router.post("/login", response_model=Token)
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+@router.post(
+    "/register",
+    response_model=UserOut,
+    status_code=status.HTTP_201_CREATED,
+)
+@limiter.limit("3/minute")
+def register(
+    request: Request,
+    user: UserCreate,
+    db: Session = Depends(get_db),
+):
+    return register_service(
+        db,
+        user,
+    )
+
+
+@router.post("/login")
+@limiter.limit("5/minute")
 def login(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
 ):
-    db_user = db.query(User).filter(User.email == form_data.username).first()
-    if not db_user or not verify_password(form_data.password, db_user.hashed_password):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-    if not db_user.is_active:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User account is inactive")
-
-    token = create_access_token({"user_id": db_user.id, "role": db_user.role})
-    return {"access_token": token, "token_type": "bearer"}
+    return login_service(
+        db,
+        form_data.username,
+        form_data.password,
+    )
 
 
-@router.get("/me", response_model=UserOut)
-def get_me(current_user: User = Depends(get_current_user)):
-    return current_user
+@router.get(
+    "/me",
+    response_model=UserOut,
+)
+def get_me(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return get_me_service(
+        db,
+        current_user,
+    )
+
+
+@router.post("/refresh")
+@limiter.limit("10/minute")
+def refresh_access_token(
+    request: Request,
+    data: RefreshRequest,
+    db: Session = Depends(get_db),
+):
+    return refresh_access_token_service(
+        db,
+        data.refresh_token,
+    )
+
+
+@router.post("/forgot-password")
+@limiter.limit("3/minute")
+def forgot_password(
+    request: Request,
+    data: ForgotPasswordRequest,
+    db: Session = Depends(get_db),
+):
+    return forgot_password_service(
+        db,
+        data,
+    )
+
+
+@router.post("/reset-password")
+@limiter.limit("5/minute")
+def reset_password(
+    request: Request,
+    data: ResetPasswordRequest,
+    db: Session = Depends(get_db),
+):
+    return reset_password_service(
+        db,
+        data,
+    )

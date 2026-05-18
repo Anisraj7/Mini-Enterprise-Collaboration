@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   CalendarDays,
@@ -12,14 +12,13 @@ import {
 import toast from "react-hot-toast";
 
 import API from "../api/axios";
+import { getUserWebSocketUrl } from "../api/websocket";
+import { getPageCount, getPageItems } from "../api/pagination";
 import Navbar from "../components/Navbar";
 
 export default function Activity() {
 
   const [logs, setLogs] = useState([]);
-
-  const [groupedLogs, setGroupedLogs] =
-    useState({});
 
   const [expanded, setExpanded] =
     useState({});
@@ -33,18 +32,34 @@ export default function Activity() {
   const [error, setError] =
     useState("");
 
+  // PAGINATION
+  const [page, setPage] =
+    useState(1);
+
+  const [totalPages, setTotalPages] =
+    useState(1);
+
   // FETCH LOGS
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
 
     try {
 
       setLoading(true);
 
       const response = await API.get(
-        "/activity/"
+        `/activity?page=${page}&limit=10`
       );
 
-      setLogs(response.data);
+      // FIXED PAGINATION RESPONSE
+      const items = getPageItems(response.data);
+      setLogs(items);
+      setExpanded(
+        Object.fromEntries(
+          items.map((log) => [`${log.entity_type}-${log.entity_id}`, true])
+        )
+      );
+
+      setTotalPages(getPageCount(response.data));
 
       setError("");
 
@@ -59,36 +74,90 @@ export default function Activity() {
 
       setLoading(false);
     }
-  };
+  }, [page]);
 
   useEffect(() => {
-    fetchLogs();
-  }, []);
+    const timer = setTimeout(() => {
+      void fetchLogs();
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [fetchLogs]);
 
   // WEBSOCKET
   useEffect(() => {
 
-    const ws = new WebSocket(
-      "ws://localhost:8000/ws/1"
-    );
+    let ws;
+    let isMounted = true;
 
-    ws.onmessage = async (event) => {
+    const connect = async () => {
 
-      toast.success(event.data);
+      try {
 
-      await fetchLogs();
+        const userResponse = await API.get(
+          "/auth/me"
+        );
+
+        if (!isMounted) return;
+
+        ws = new WebSocket(
+          getUserWebSocketUrl(userResponse.data.id)
+        );
+
+        ws.onmessage = async (event) => {
+
+          let message = event.data;
+
+          try {
+
+            const parsed = JSON.parse(
+              event.data
+            );
+
+            message =
+              parsed.message || event.data;
+
+          } catch {
+            // keep raw message
+          }
+
+          toast.success(message);
+
+          await fetchLogs();
+        };
+
+        ws.onopen = () => {
+          console.log(
+            "WebSocket Connected"
+          );
+        };
+
+        ws.onclose = () => {
+          console.log(
+            "WebSocket Disconnected"
+          );
+        };
+
+      } catch (err) {
+
+        console.log(err);
+      }
     };
+
+    connect();
 
     return () => {
-      ws.close();
+      isMounted = false;
+      ws?.close();
     };
 
-  }, []);
+  }, [fetchLogs]);
 
   // GROUP LOGS
-  useEffect(() => {
-
-    let filtered = [...logs];
+  const groupedLogs = useMemo(() => {
+    let filtered = Array.isArray(logs)
+      ? [...logs]
+      : [];
 
     if (search) {
 
@@ -96,10 +165,15 @@ export default function Activity() {
         (log) =>
           log.action
             ?.toLowerCase()
-            .includes(search.toLowerCase()) ||
+            .includes(
+              search.toLowerCase()
+            ) ||
+
           log.entity_type
             ?.toLowerCase()
-            .includes(search.toLowerCase())
+            .includes(
+              search.toLowerCase()
+            )
       );
     }
 
@@ -117,33 +191,34 @@ export default function Activity() {
       grouped[key].push(log);
     });
 
-    setGroupedLogs(grouped);
-
-    const initialExpanded = {};
-
-    Object.keys(grouped).forEach((key) => {
-      initialExpanded[key] = true;
-    });
-
-    setExpanded(initialExpanded);
-
+    return grouped;
   }, [logs, search]);
+
 
   // STATS
   const stats = useMemo(() => {
 
+    const safeLogs = Array.isArray(logs)
+      ? logs
+      : [];
+
     return {
-      total: logs.length,
+      total: safeLogs.length,
 
-      tasks: logs.filter(
-        (l) => l.entity_type === "task"
+      tasks: safeLogs.filter(
+        (l) =>
+          l.entity_type
+            ?.toLowerCase() === "task"
       ).length,
 
-      documents: logs.filter(
-        (l) => l.entity_type === "document"
+      documents: safeLogs.filter(
+        (l) =>
+          l.entity_type
+            ?.toLowerCase() ===
+          "document"
       ).length,
 
-      approvals: logs.filter(
+      approvals: safeLogs.filter(
         (l) =>
           l.action
             ?.toLowerCase()
@@ -172,7 +247,9 @@ export default function Activity() {
       return "bg-green-100 text-green-700";
     }
 
-    if (lower.includes("progress")) {
+    if (
+      lower.includes("progress")
+    ) {
       return "bg-blue-100 text-blue-700";
     }
 
@@ -215,7 +292,9 @@ export default function Activity() {
               <input
                 value={search}
                 onChange={(e) =>
-                  setSearch(e.target.value)
+                  setSearch(
+                    e.target.value
+                  )
                 }
                 placeholder="Search activity"
                 className="border rounded px-9 py-2 text-sm w-64"
@@ -242,6 +321,7 @@ export default function Activity() {
         <div className="bg-white border rounded-md px-4 py-3 mb-4 shadow-sm flex flex-wrap gap-8 text-sm">
 
           <div>
+
             <span className="text-gray-500">
               Total Activities:
             </span>
@@ -249,9 +329,11 @@ export default function Activity() {
             <span className="font-semibold ml-2">
               {stats.total}
             </span>
+
           </div>
 
           <div>
+
             <span className="text-gray-500">
               Tasks:
             </span>
@@ -259,9 +341,11 @@ export default function Activity() {
             <span className="font-semibold ml-2 text-blue-600">
               {stats.tasks}
             </span>
+
           </div>
 
           <div>
+
             <span className="text-gray-500">
               Documents:
             </span>
@@ -269,9 +353,11 @@ export default function Activity() {
             <span className="font-semibold ml-2 text-green-600">
               {stats.documents}
             </span>
+
           </div>
 
           <div>
+
             <span className="text-gray-500">
               Approvals:
             </span>
@@ -279,6 +365,7 @@ export default function Activity() {
             <span className="font-semibold ml-2 text-purple-600">
               {stats.approvals}
             </span>
+
           </div>
 
         </div>
@@ -321,10 +408,13 @@ export default function Activity() {
           )}
 
           {!loading &&
-            Object.entries(groupedLogs).map(
+            Object.entries(
+              groupedLogs
+            ).map(
               ([key, entries]) => {
 
-                const latest = entries[0];
+                const latest =
+                  entries[0];
 
                 return (
 
@@ -361,13 +451,24 @@ export default function Activity() {
                       </div>
 
                       <div className="text-blue-600 font-medium flex items-center gap-1">
+
                         <User size={13} />
-                        User {latest.user_id}
+
+                        User{" "}
+                        {latest.user_id}
+
                       </div>
 
                       <div className="font-medium text-indigo-600 uppercase">
-                        {latest.entity_type}-
-                        {latest.entity_id}
+
+                        {
+                          latest.entity_type
+                        }
+                        -
+                        {
+                          latest.entity_id
+                        }
+
                       </div>
 
                       <div className="font-medium text-gray-700">
@@ -375,8 +476,11 @@ export default function Activity() {
                       </div>
 
                       <div className="text-gray-600 truncate">
-                        {latest.description ||
+
+                        {latest.details ||
+                          latest.description ||
                           "Enterprise workflow update"}
+
                       </div>
 
                       <div>
@@ -384,8 +488,10 @@ export default function Activity() {
                         <span
                           className={`px-2 py-1 rounded text-xs font-semibold ${getStatusBadge(latest.status)}`}
                         >
+
                           {latest.status ||
                             "UPDATED"}
+
                         </span>
 
                       </div>
@@ -397,55 +503,72 @@ export default function Activity() {
 
                       <div className="bg-gray-50 border-t">
 
-                        {entries.slice(1).map((log) => (
+                        {entries
+                          .slice(1)
+                          .map((log) => (
 
-                          <div
-                            key={log.id}
-                            className="grid grid-cols-6 gap-4 px-4 py-2 text-sm border-b last:border-b-0 hover:bg-gray-100"
-                          >
+                            <div
+                              key={log.id}
+                              className="grid grid-cols-6 gap-4 px-4 py-2 text-sm border-b last:border-b-0 hover:bg-gray-100"
+                            >
 
-                            <div className="flex items-center gap-2 text-gray-500">
+                              <div className="flex items-center gap-2 text-gray-500">
 
-                              <CalendarDays size={13} />
+                                <CalendarDays size={13} />
 
-                              {new Date(
-                                log.created_at
-                              ).toLocaleString()}
+                                {new Date(
+                                  log.created_at
+                                ).toLocaleString()}
+
+                              </div>
+
+                              <div className="text-blue-600">
+
+                                User{" "}
+                                {log.user_id}
+
+                              </div>
+
+                              <div className="font-medium text-indigo-600 uppercase">
+
+                                {
+                                  log.entity_type
+                                }
+                                -
+                                {
+                                  log.entity_id
+                                }
+
+                              </div>
+
+                              <div>
+                                {log.action}
+                              </div>
+
+                              <div className="text-gray-500 truncate">
+
+                                {log.details ||
+                                  log.description ||
+                                  "Workflow activity"}
+
+                              </div>
+
+                              <div>
+
+                                <span
+                                  className={`px-2 py-1 rounded text-xs font-semibold ${getStatusBadge(log.status)}`}
+                                >
+
+                                  {log.status ||
+                                    "UPDATED"}
+
+                                </span>
+
+                              </div>
 
                             </div>
 
-                            <div className="text-blue-600">
-                              User {log.user_id}
-                            </div>
-
-                            <div className="font-medium text-indigo-600 uppercase">
-                              {log.entity_type}-
-                              {log.entity_id}
-                            </div>
-
-                            <div>
-                              {log.action}
-                            </div>
-
-                            <div className="text-gray-500 truncate">
-                              {log.description ||
-                                "Workflow activity"}
-                            </div>
-
-                            <div>
-
-                              <span
-                                className={`px-2 py-1 rounded text-xs font-semibold ${getStatusBadge(log.status)}`}
-                              >
-                                {log.status ||
-                                  "UPDATED"}
-                              </span>
-
-                            </div>
-
-                          </div>
-
-                        ))}
+                          ))}
 
                       </div>
 
@@ -457,13 +580,44 @@ export default function Activity() {
             )}
 
           {!loading &&
-            Object.keys(groupedLogs).length === 0 && (
+            Object.keys(
+              groupedLogs
+            ).length === 0 && (
 
             <div className="p-10 text-center text-gray-500 text-sm">
               No activity logs found.
             </div>
 
           )}
+
+        </div>
+
+        {/* PAGINATION */}
+        <div className="flex justify-between items-center mt-4 bg-white border rounded-md p-3 shadow-sm">
+
+          <button
+            disabled={page === 1}
+            onClick={() =>
+              setPage(page - 1)
+            }
+            className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50 hover:bg-gray-300"
+          >
+            Previous
+          </button>
+
+          <span className="text-sm font-medium">
+            Page {page} of {totalPages}
+          </span>
+
+          <button
+            disabled={page === totalPages}
+            onClick={() =>
+              setPage(page + 1)
+            }
+            className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50 hover:bg-gray-300"
+          >
+            Next
+          </button>
 
         </div>
 

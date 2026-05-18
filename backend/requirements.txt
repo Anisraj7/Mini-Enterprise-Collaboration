@@ -8,3 +8,10 @@ passlib[bcrypt]
 python-multipart
 psycopg2-binary
 email-validator
+redis
+slowapi
+bleach
+authlib
+python-decouple
+razorpay
+fastapi-pagination

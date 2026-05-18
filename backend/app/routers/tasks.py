@@ -1,178 +1,227 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, UploadFile, File, Form
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_current_user, require_role
+from fastapi_pagination import Page
+
+from app.core.permissions import get_current_user, require_role
 from app.db.database import get_db
-from app.models.activity_log import ActivityLog
-from app.models.audit import AuditLog
-from app.models.task import Task
+
 from app.models.user import User
-from app.schemas.task import TaskAssign, TaskCreate, TaskOut, TaskStatusUpdate, TaskUpdate
-from app.services.notification_service import create_notification
-from app.services.task_service import apply_task_status, can_access_task, get_kanban_board, visible_tasks_query
 
-router = APIRouter(prefix="/tasks", tags=["tasks"])
+from app.schemas.task import (
+    TaskCreate,
+    TaskUpdate,
+    TaskOut,
+    TaskAssign,
+    TaskStatusUpdate,
+)
+
+from app.services.task_service import (
+    create_task_service,
+    create_task_with_document_service,
+    list_tasks_service,
+    get_task_service,
+    update_task_service,
+    delete_task_service,
+    update_task_status_service,
+    assign_task_service,
+    smart_assign_task_service,
+    kanban_service,
+    recommendation_service,
+)
+
+router = APIRouter(
+    prefix="/tasks",
+    tags=["Tasks"],
+)
 
 
-def _get_task_or_404(db: Session, task_id: int):
-    task = db.query(Task).filter(Task.id == task_id).first()
-    if not task:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
-    return task
-
-
-def _ensure_user_exists(db: Session, user_id: int):
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assigned user not found")
-    return user
-
-
-@router.post("/", response_model=TaskOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/",
+    response_model=TaskOut,
+)
 def create_task(
     task: TaskCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "manager"])),
+    current_user: User = Depends(
+        require_role(["admin", "manager"])
+    ),
 ):
-    if task.assigned_to_id:
-        _ensure_user_exists(db, task.assigned_to_id)
-
-    new_task = Task(
-        title=task.title,
-        description=task.description,
-        status=task.status.value,
-        priority=task.priority.value,
-        due_date=task.due_date,
-        created_by_id=current_user.id,
-        assigned_to_id=task.assigned_to_id,
-        updated_by=current_user.id,
+    return create_task_service(
+        db,
+        current_user,
+        task,
     )
-    db.add(new_task)
-    db.flush()
-    db.add(ActivityLog(user_id=current_user.id, action="TASK_CREATED", entity_type="TASK", entity_id=new_task.id))
-    db.add(AuditLog(user_id=current_user.id, action="TASK_CREATED", entity="TASK", entity_id=new_task.id))
-    if new_task.assigned_to_id:
-        create_notification(db, new_task.assigned_to_id, f"Task assigned: {new_task.title}")
-    db.commit()
-    db.refresh(new_task)
-    return new_task
 
 
-@router.get("/", response_model=list[TaskOut])
-def get_tasks(
+@router.post(
+    "/withdocument",
+    response_model=TaskOut,
+)
+def create_task_with_document(
+    title: str = Form(...),
+    description: str = Form(...),
+    status_value: str = Form(...),
+    priority: str = Form(...),
+    due_date: str = Form(None),
+    assigned_to_id: int = Form(None),
+    document: UploadFile = File(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        require_role(["admin", "manager"])
+    ),
+):
+    return create_task_with_document_service(
+        db=db,
+        current_user=current_user,
+        title=title,
+        description=description,
+        status_value=status_value,
+        priority=priority,
+        due_date=due_date,
+        assigned_to_id=assigned_to_id,
+        document=document,
+    )
+
+
+@router.get(
+    "/",
+    response_model=Page[TaskOut],
+)
+def list_tasks(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return visible_tasks_query(db, current_user).order_by(Task.created_at.desc()).all()
+    return list_tasks_service(
+        db,
+        current_user,
+    )
 
 
 @router.get("/kanban")
-def kanban(
+def get_kanban(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return get_kanban_board(current_user, db)
+    return kanban_service(
+        db,
+        current_user,
+    )
 
 
-@router.get("/{task_id}", response_model=TaskOut)
+@router.get("/assignment/recommendation")
+def assignment_recommendation(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        require_role(["admin", "manager"])
+    ),
+):
+    return recommendation_service(
+        db,
+        current_user,
+    )
+
+
+@router.get(
+    "/{task_id}",
+    response_model=TaskOut,
+)
 def get_task(
     task_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    task = _get_task_or_404(db, task_id)
-    if not can_access_task(task, current_user):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
-    return task
+    return get_task_service(
+        db,
+        current_user,
+        task_id,
+    )
 
 
-@router.put("/{task_id}", response_model=TaskOut)
+@router.put(
+    "/{task_id}",
+    response_model=TaskOut,
+)
 def update_task(
     task_id: int,
     updated: TaskUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    task = _get_task_or_404(db, task_id)
-    if not can_access_task(task, current_user):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
-
-    changes = updated.model_dump(exclude_unset=True)
-
-    if current_user.role == "employee":
-        disallowed = set(changes) - {"status"}
-        if disallowed:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Employees can only update task status")
-
-    if current_user.role == "manager" and task.created_by_id != current_user.id and set(changes) - {"status"}:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Managers can only edit tasks they created")
-
-    if "assigned_to_id" in changes and changes["assigned_to_id"] is not None:
-        _ensure_user_exists(db, changes["assigned_to_id"])
-
-    if "status" in changes:
-        apply_task_status(task, changes.pop("status"), current_user, db)
-
-    for key, value in changes.items():
-        if hasattr(value, "value"):
-            value = value.value
-        setattr(task, key, value)
-
-    if changes:
-        task.updated_by = current_user.id
-        db.add(ActivityLog(user_id=current_user.id, action="TASK_UPDATED", entity_type="TASK", entity_id=task.id))
-        db.add(AuditLog(user_id=current_user.id, action="TASK_UPDATED", entity="TASK", entity_id=task.id))
-
-    db.commit()
-    db.refresh(task)
-    return task
+    return update_task_service(
+        db,
+        current_user,
+        task_id,
+        updated,
+    )
 
 
-@router.patch("/{task_id}/status", response_model=TaskOut)
+@router.patch(
+    "/{task_id}/status",
+    response_model=TaskOut,
+)
 def update_task_status(
     task_id: int,
     payload: TaskStatusUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    task = _get_task_or_404(db, task_id)
-    apply_task_status(task, payload.status, current_user, db)
-    db.commit()
-    db.refresh(task)
-    return task
+    return update_task_status_service(
+        db,
+        current_user,
+        task_id,
+        payload,
+    )
+
+
+@router.patch(
+    "/{task_id}/assign",
+    response_model=TaskOut,
+)
+def assign_task(
+    task_id: int,
+    assignment: TaskAssign,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        require_role(["admin", "manager"])
+    ),
+):
+    return assign_task_service(
+        db,
+        current_user,
+        task_id,
+        assignment,
+    )
+
+
+@router.patch(
+    "/{task_id}/smart-assign",
+    response_model=TaskOut,
+)
+def smart_assign_task(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        require_role(["admin", "manager"])
+    ),
+):
+    return smart_assign_task_service(
+        db,
+        current_user,
+        task_id,
+    )
 
 
 @router.delete("/{task_id}")
 def delete_task(
     task_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin"])),
+    current_user: User = Depends(
+        require_role(["admin"])
+    ),
 ):
-    task = _get_task_or_404(db, task_id)
-    db.delete(task)
-    db.add(ActivityLog(user_id=current_user.id, action="TASK_DELETED", entity_type="TASK", entity_id=task_id))
-    db.add(AuditLog(user_id=current_user.id, action="TASK_DELETED", entity="TASK", entity_id=task_id))
-    db.commit()
-    return {"message": "Task deleted"}
-
-
-@router.patch("/{task_id}/assign", response_model=TaskOut)
-def assign_task(
-    task_id: int,
-    assignment: TaskAssign,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "manager"])),
-):
-    task = _get_task_or_404(db, task_id)
-    if current_user.role == "manager" and task.created_by_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Managers can only assign their own tasks")
-
-    _ensure_user_exists(db, assignment.assigned_to_id)
-    task.assigned_to_id = assignment.assigned_to_id
-    task.updated_by = current_user.id
-    db.add(ActivityLog(user_id=current_user.id, action="TASK_ASSIGNED", entity_type="TASK", entity_id=task.id))
-    db.add(AuditLog(user_id=current_user.id, action="TASK_ASSIGNED", entity="TASK", entity_id=task.id))
-    create_notification(db, assignment.assigned_to_id, f"Task assigned: {task.title}")
-    db.commit()
-    db.refresh(task)
-    return task
+    return delete_task_service(
+        db,
+        current_user,
+        task_id,
+    )

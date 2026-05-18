@@ -1,25 +1,55 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import (
+    APIRouter,
+    Depends,
+)
+
 from sqlalchemy.orm import Session
-from app.core.dependencies import get_current_user
+
+from fastapi_pagination import Page
+
+from app.core.dependencies import (
+    get_current_user,
+)
+
 from app.db.database import get_db
-from app.models.notification import Notification
 
-router = APIRouter(prefix="/notifications", tags=["Notifications"])
+from app.schemas.notification import (
+    NotificationOut,
+)
 
-@router.get("/")
-def get_notifications(db: Session = Depends(get_db), user=Depends(get_current_user)):
-    return (
-        db.query(Notification)
-        .filter(Notification.user_id == user.id)
-        .order_by(Notification.created_at.desc())
-        .all()
+from app.services.notification_service import (
+    get_notifications_service,
+    mark_notification_read_service,
+)
+
+router = APIRouter(
+    prefix="/notifications",
+    tags=["Notifications"],
+)
+
+
+@router.get(
+    "/",
+    response_model=Page[NotificationOut],
+)
+def get_notifications(
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    return get_notifications_service(
+        db,
+        user,
     )
 
-@router.patch("/{id}/read")
-def mark_read(id: int, db: Session = Depends(get_db), user=Depends(get_current_user)):
-    notif = db.query(Notification).filter(Notification.id == id, Notification.user_id == user.id).first()
-    if not notif:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
-    notif.is_read = True
-    db.commit()
-    return {"msg": "updated"}
+
+@router.patch("/{notification_id}/read")
+def mark_read(
+    notification_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    return mark_notification_read_service(
+        notification_id,
+        db,
+        user,
+    )

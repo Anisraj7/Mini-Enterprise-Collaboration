@@ -1,4 +1,4 @@
-
+﻿
 import { useEffect, useMemo, useState } from "react";
 
 import {
@@ -31,6 +31,8 @@ import {
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import API from "../api/axios";
+import { getPageItems } from "../api/pagination";
+import { getUserWebSocketUrl } from "../api/websocket";
 import Navbar from "../components/Navbar";
 
 const columns = [
@@ -361,7 +363,7 @@ export default function KanbanBoard() {
     if (!user) return;
 
     const ws = new WebSocket(
-      `ws://localhost:8000/ws/${user.id}`
+      getUserWebSocketUrl(user.id)
     );
 
     ws.onopen = () => {
@@ -453,15 +455,15 @@ export default function KanbanBoard() {
         `/tasks/${task.id}/comments`
       );
 
-      setComments(response.data);
+      setComments(getPageItems(response.data));
 
       const docsResponse = await API.get(
         `/documents/task/${task.id}`
       );
 
-      setDocuments(docsResponse.data);
+      setDocuments(getPageItems(docsResponse.data));
 
-    } catch (err) {
+    } catch {
 
       toast.error(
         "Unable to load comments"
@@ -495,7 +497,7 @@ export default function KanbanBoard() {
         `/documents/task/${selectedTask.id}`
       );
 
-      setDocuments(docsResponse.data);
+      setDocuments(getPageItems(docsResponse.data));
 
     } catch (err) {
 
@@ -524,8 +526,7 @@ export default function KanbanBoard() {
       link.click();
       URL.revokeObjectURL(url);
 
-    } catch (err) {
-
+    } catch {
       toast.error("Unable to download document");
     }
   };
@@ -552,10 +553,9 @@ export default function KanbanBoard() {
         `/tasks/${selectedTask.id}/comments`
       );
 
-      setComments(response.data);
+      setComments(getPageItems(response.data));
 
-    } catch (err) {
-
+    } catch {
       toast.error(
         "Unable to add comment"
       );
@@ -880,11 +880,11 @@ export default function KanbanBoard() {
 
                     <p className="text-xs text-gray-400 mt-2">
                       {comment.user_name || `User ${comment.user_id}`}
-                      {" • "}
+                      {" â€¢ "}
                       {comment.is_internal
                         ? "Internal"
                         : "Public"}
-                      {" • "}
+                      {" â€¢ "}
                       {new Date(
                         comment.created_at
                       ).toLocaleString()}
@@ -944,3 +944,4 @@ export default function KanbanBoard() {
     </div>
   );
 }
+
