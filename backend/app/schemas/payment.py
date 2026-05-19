@@ -2,9 +2,9 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-
 class PaymentCreate(BaseModel):
-    plan: str = "basic"
+    plan: str
+    provider: str
 
 
 class PaymentVerify(BaseModel):

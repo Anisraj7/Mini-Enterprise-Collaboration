@@ -170,7 +170,7 @@ export default function Navbar() {
 
             {user && (
               <p className="text-xs text-indigo-200 mt-1">
-                Organization ?{" "}
+                Organization :{" "}
                 <span className="font-medium text-cyan-300">
                   {user.organization?.name}
                 </span>

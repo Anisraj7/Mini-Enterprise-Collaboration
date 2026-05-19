@@ -49,5 +49,17 @@ RAZORPAY_KEY_SECRET = os.getenv(
     "RAZORPAY_KEY_SECRET"
 )
 
+
+# ===================================
+# STRIPE
+# ===================================
+STRIPE_SECRET_KEY = os.getenv(
+    "STRIPE_SECRET_KEY"
+)
+
+STRIPE_PUBLISHABLE_KEY = os.getenv(
+    "STRIPE_PUBLISHABLE_KEY"
+)
+
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 CACHE_DEFAULT_TTL_SECONDS = int(os.getenv("CACHE_DEFAULT_TTL_SECONDS", 300))

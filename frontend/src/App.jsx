@@ -12,6 +12,7 @@ import Register from "./pages/Register";
 import Users from "./pages/Users";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Billing from "./pages/Billing";
+import PaymentSuccess from "./pages/PaymentSuccess";
 
 function App() {
   return (
@@ -92,6 +93,8 @@ function App() {
             </ProtectedRoute>
           }
         />
+
+        <Route path="/payment-success" element={<PaymentSuccess />} />
       </Routes>
     </BrowserRouter>
   );
