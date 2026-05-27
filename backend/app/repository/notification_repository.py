@@ -1,63 +1,92 @@
 from sqlalchemy.orm import Session
 
-from app.models.notification import Notification
+from app.models.notification import (
+    Notification,
+)
 
 
-def notifications_query(
-    db: Session,
-    user,
-):
+class NotificationRepository:
 
-    query = db.query(Notification).filter(
-        Notification.user_id == user.id
-    )
+    @staticmethod
+    def notifications_query(
+        db: Session,
+        user,
+    ):
 
-    if user.organization_id:
-        query = query.filter(
-            Notification.organization_id
-            == user.organization_id
+        query = (
+            db.query(Notification)
+            .filter(
+                Notification.user_id
+                == user.id
+            )
         )
 
-    return query.order_by(
-        Notification.created_at.desc()
-    )
+        if user.organization_id:
 
+            query = query.filter(
+                Notification.organization_id
+                == user.organization_id
+            )
 
-def get_notification_by_id(
-    db: Session,
-    notification_id: int,
-    user_id: int,
-):
-
-    return (
-        db.query(Notification)
-        .filter(
-            Notification.id == notification_id,
-            Notification.user_id == user_id,
+        return query.order_by(
+            Notification.created_at.desc()
         )
-        .first()
-    )
 
+    @staticmethod
+    def get_by_id(
+        db: Session,
+        notification_id: int,
+        user_id: int,
+    ):
 
-def create_notification_repository(
-    db: Session,
-    notification: Notification,
-):
+        return (
+            db.query(Notification)
+            .filter(
+                Notification.id
+                == notification_id,
+                Notification.user_id
+                == user_id,
+            )
+            .first()
+        )
 
-    db.add(notification)
+    @staticmethod
+    def create(
+        db: Session,
+        notification: Notification,
+    ):
 
-    db.flush()
+        db.add(notification)
 
-    return notification
+        db.flush()
 
+        return notification
 
-def commit_refresh(
-    db: Session,
-    model,
-):
+    @staticmethod
+    def commit_refresh(
+        db: Session,
+        model,
+    ):
 
-    db.commit()
+        db.commit()
 
-    db.refresh(model)
+        db.refresh(model)
 
-    return model
+        return model
+
+    @staticmethod
+    def unread_count(
+        db: Session,
+        user_id: int,
+    ):
+
+        return (
+            db.query(Notification)
+            .filter(
+                Notification.user_id
+                == user_id,
+                Notification.is_read
+                == False,
+            )
+            .count()
+        )

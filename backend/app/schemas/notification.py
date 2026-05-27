@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 # =========================================
@@ -9,7 +9,13 @@ from pydantic import BaseModel
 # =========================================
 class NotificationBase(BaseModel):
 
-    message: str
+    title: Optional[str] = "System Notification"
+
+    message: Optional[str] = ""
+
+    notification_type: Optional[str] = "GENERAL"
+
+    priority: Optional[str] = "MEDIUM"
 
 
 # =========================================
@@ -20,6 +26,14 @@ class NotificationCreate(NotificationBase):
     user_id: int
 
     organization_id: Optional[int] = None
+
+
+# =========================================
+# UPDATE NOTIFICATION
+# =========================================
+class NotificationUpdate(BaseModel):
+
+    is_read: Optional[bool] = None
 
 
 # =========================================
@@ -37,5 +51,6 @@ class NotificationOut(NotificationBase):
 
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(
+        from_attributes=True
+    )

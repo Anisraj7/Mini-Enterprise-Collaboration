@@ -18,19 +18,20 @@ from app.core.cache import (
 )
 
 from app.models.notification import Notification
+from app.models.notification_preference import NotificationPreference
 
 from app.services.websocket_manager import (
     manager,
 )
 
 from app.repository.notification_repository import (
-    notifications_query,
-    get_notification_by_id,
-    create_notification_repository,
-    commit_refresh,
+    NotificationRepository
 )
 
 
+# =========================================
+# WEBSOCKET DISPATCH
+# =========================================
 def _dispatch_ws_message(
     user_id: int,
     payload,
@@ -50,6 +51,9 @@ def _dispatch_ws_message(
     )
 
 
+# =========================================
+# KANBAN UPDATE DISPATCH
+# =========================================
 def dispatch_kanban_update(
     user_ids,
 ):
@@ -71,20 +75,61 @@ def dispatch_kanban_update(
     )
 
 
+# =========================================
+# CREATE NOTIFICATION
+# =========================================
 def create_notification(
     db: Session,
     user_id: int,
-    message: str,
+    title: str,
+    message: str | int | None = None,
+    notification_type: str = "GENERAL",
+    priority: str = "MEDIUM",
     organization_id: int | None = None,
 ):
+    if isinstance(message, int) and organization_id is None:
+        organization_id = message
+        message = title
+        notification_type = "GENERAL"
+
+    if message is None:
+        message = title
+
+    preference = (
+        db.query(NotificationPreference)
+        .filter(NotificationPreference.user_id == user_id)
+        .first()
+    )
+
+    if preference and not preference.in_app_enabled:
+        return None
+
+    preference_field_by_type = {
+        "TASK": "task_notifications",
+        "APPROVAL": "approval_notifications",
+        "ESCALATION": "escalation_notifications",
+        "DOCUMENT": "document_notifications",
+    }
+    preference_field = preference_field_by_type.get(str(notification_type).upper())
+
+    if preference and preference_field and not getattr(preference, preference_field):
+        return None
 
     notification = Notification(
         user_id=user_id,
+        title=title,
         message=message,
+        notification_type=notification_type,
+        priority=priority,
         organization_id=organization_id,
     )
 
-    create_notification_repository(
+    NotificationRepository.create(
+        db,
+        notification,
+    )
+
+    NotificationRepository.commit_refresh(
         db,
         notification,
     )
@@ -95,11 +140,22 @@ def create_notification(
         user_id,
         {
             "type": "notification",
+            "title": title,
             "message": message,
+            "notification_type": notification_type,
+            "priority": priority,
             "notification": {
+                "id": notification.id,
                 "user_id": user_id,
+                "title": title,
                 "message": message,
+                "notification_type": notification_type,
+                "priority": priority,
                 "organization_id": organization_id,
+                "is_read": False,
+                "created_at": str(
+                    notification.created_at
+                ),
             },
         },
     )
@@ -107,17 +163,23 @@ def create_notification(
     return notification
 
 
+# =========================================
+# PUSH LIVE NOTIFICATION
+# =========================================
 async def push_notification(
     user_id: int,
-    message: str,
+    payload,
 ):
 
     await manager.send_message(
         user_id,
-        message,
+        payload,
     )
 
 
+# =========================================
+# GET USER NOTIFICATIONS
+# =========================================
 def get_notifications_service(
     db: Session,
     user,
@@ -133,7 +195,7 @@ def get_notifications_service(
     if cached:
         return cached
 
-    query = notifications_query(
+    query = NotificationRepository.notifications_query(
         db,
         user,
     )
@@ -150,13 +212,57 @@ def get_notifications_service(
     return result
 
 
+# =========================================
+# GET UNREAD COUNT
+# =========================================
+def get_unread_count_service(
+    db: Session,
+    user,
+):
+
+    cache_key = (
+        f"notifications:unread:"
+        f"user:{user.id}"
+    )
+
+    cached = cache_get(cache_key)
+
+    if cached is not None:
+        return {
+            "unread_count": cached
+        }
+
+    count = (
+        db.query(Notification)
+        .filter(
+            Notification.user_id
+            == user.id,
+            Notification.is_read
+            == False,
+        )
+        .count()
+    )
+
+    cache_set(
+        cache_key,
+        count,
+    )
+
+    return {
+        "unread_count": count
+    }
+
+
+# =========================================
+# MARK NOTIFICATION READ
+# =========================================
 def mark_notification_read_service(
     notification_id: int,
     db: Session,
     user,
 ):
 
-    notification = get_notification_by_id(
+    notification = NotificationRepository.get_by_id(
         db,
         notification_id,
         user.id,
@@ -170,7 +276,7 @@ def mark_notification_read_service(
 
     notification.is_read = True
 
-    commit_refresh(
+    NotificationRepository.commit_refresh(
         db,
         notification,
     )
@@ -180,3 +286,48 @@ def mark_notification_read_service(
     return {
         "message": "Notification updated"
     }
+
+
+# =========================================
+# MARK ALL NOTIFICATIONS READ
+# =========================================
+def mark_all_notifications_read_service(
+    db: Session,
+    user,
+):
+
+    notifications = (
+        NotificationRepository.notifications_query(
+            db,
+            user,
+        )
+        .filter(
+            Notification.is_read == False
+        )
+        .all()
+    )
+
+    for notification in notifications:
+        notification.is_read = True
+
+    db.commit()
+
+    invalidate_read_caches()
+
+    return {
+        "message": "All notifications marked as read"
+    }
+
+
+class NotificationService:
+    @staticmethod
+    def create_notification(db: Session, payload):
+        return create_notification(
+            db=db,
+            user_id=payload.user_id,
+            title=payload.title,
+            message=payload.message,
+            notification_type=payload.notification_type,
+            priority=payload.priority,
+            organization_id=getattr(payload, "organization_id", None),
+        )

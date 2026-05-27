@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from fastapi_pagination import Page
 
-from app.core.permissions import require_role
+from app.core.permissions import require_roles
 
 from app.db.database import get_db
 
@@ -29,7 +29,7 @@ router = APIRouter(
 def get_activity_logs(
     db: Session = Depends(get_db),
     current_user: User = Depends(
-        require_role(["admin", "manager"])
+        require_roles(["admin", "manager"])
     ),
 ):
     return get_activity_logs_service(

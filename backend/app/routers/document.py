@@ -17,7 +17,7 @@ from fastapi_pagination import Page
 
 from app.core.permissions import (
     get_current_user,
-    require_role,
+    require_roles,
 )
 
 from app.core.rate_limit import limiter
@@ -49,7 +49,7 @@ async def upload(
     task_id: Optional[int] = None,
     db: Session = Depends(get_db),
     user=Depends(
-        require_role([
+        require_roles([
             "admin",
             "manager",
             "employee",

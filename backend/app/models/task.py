@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, String, Index
+from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, Integer, String, Index
 from sqlalchemy.orm import relationship
 from datetime import datetime
 
@@ -38,6 +38,12 @@ class Task(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, index=True)
 
     document = Column(String, nullable=True)
+
+    sla_status = Column(String(50), nullable=True, index=True)
+
+    sla_due_time = Column(DateTime, nullable=True, index=True)
+
+    is_sla_breached = Column(Boolean, default=False, nullable=False, index=True)
 
     created_by = relationship("User", foreign_keys=[created_by_id])
 

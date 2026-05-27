@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
 from app.db.database import Base
 from datetime import datetime
 
+
 class Subscription(Base):
     __tablename__ = "subscriptions"
 

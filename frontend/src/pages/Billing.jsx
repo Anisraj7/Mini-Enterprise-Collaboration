@@ -29,13 +29,13 @@ export default function Billing() {
   const plans = [
     {
       name: "Basic",
-      amount: 499,
-      price: "₹499",
+      amount: 0,
+      price: "₹0",
       color: "from-slate-500 to-slate-700",
       icon: ShieldCheck,
       features: [
         "5 Team Members",
-        "100 Credits",
+        "500 Credits",
         "Basic Analytics",
         "Email Support",
       ],
@@ -94,147 +94,181 @@ export default function Billing() {
   };
 
   useEffect(() => {
-    loadSubscription();
+    API.get("/payments/subscription")
+      .then(({ data }) => setSubscription(data))
+      .catch((error) => {
+        console.log(error);
+        setSubscription(null);
+      });
   }, []);
 
   // =====================================
-  // HANDLE PAYMENT
-  // =====================================
-  const handlePayment = async (plan) => {
+// HANDLE PAYMENT
+// =====================================
+const handlePayment = async (plan) => {
 
-    try {
+  try {
 
-      setLoading(true);
+    setLoading(true);
+
+    // =================================
+    // FREE BASIC PLAN
+    // =================================
+    if (plan.toLowerCase() === "basic") {
 
       const { data } =
         await API.post(
           "/payments/create-payment",
           {
-            plan: plan.toLowerCase(),
-            provider,
+            plan: "basic",
+            provider: "free",
           }
         );
 
-      // =================================
-      // STRIPE
-      // =================================
-      if (provider === "stripe") {
-
-        window.location.href =
-          data.checkout_url;
-
-        return;
-      }
-
-      // =================================
-      // RAZORPAY
-      // =================================
-      if (provider === "razorpay") {
-
-        const options = {
-          key: data.key,
-
-          amount: data.amount,
-
-          currency: data.currency,
-
-          name: "TaskFlow",
-
-          description:
-            `${plan} Subscription`,
-
-          order_id:
-            data.order_id || data.id,
-
-          method: {
-            upi: true,
-            card: true,
-            netbanking: true,
-            wallet: true,
-            paylater: true,
-          },
-
-          handler: async function (
-            response
-          ) {
-
-            try {
-
-              await API.post(
-                "/payments/verify",
-                {
-                  razorpay_order_id:
-                    response.razorpay_order_id,
-
-                  razorpay_payment_id:
-                    response.razorpay_payment_id,
-
-                  razorpay_signature:
-                    response.razorpay_signature,
-
-                  plan:
-                    plan.toLowerCase(),
-                }
-              );
-
-              await loadSubscription();
-
-              alert(
-                `${plan} Plan Activated`
-              );
-
-            } catch (error) {
-
-              console.log(error);
-
-              alert(
-                "Payment Verification Failed"
-              );
-            }
-          },
-
-          prefill: {
-            name: "Test User",
-            email: "test@example.com",
-            contact: "9999999999",
-          },
-
-          theme: {
-            color: "#4f46e5",
-          },
-        };
-
-        const razorpay =
-          new window.Razorpay(options);
-
-        razorpay.on(
-          "payment.failed",
-          function (response) {
-
-            console.log(
-              response.error
-            );
-
-            alert("Payment Failed");
-          }
-        );
-
-        razorpay.open();
-      }
-
-    } catch (error) {
-
-      console.log(error);
+      await loadSubscription();
 
       alert(
-        "Unable to Process Payment"
+        data.message ||
+        "Basic Plan Activated"
       );
 
-    } finally {
-
-      setLoading(false);
+      return;
     }
-  };
+
+    // =================================
+    // PAID PLANS
+    // =================================
+    const { data } =
+      await API.post(
+        "/payments/create-payment",
+        {
+          plan: plan.toLowerCase(),
+          provider,
+        }
+      );
+
+    // =================================
+    // STRIPE
+    // =================================
+    if (provider === "stripe") {
+
+      globalThis.location.assign(
+        data.checkout_url
+      );
+
+      return;
+    }
+
+    // =================================
+    // RAZORPAY
+    // =================================
+    if (provider === "razorpay") {
+
+      const options = {
+
+        key: data.key,
+
+        amount: data.amount,
+
+        currency: data.currency,
+
+        name: "TaskFlow",
+
+        description:
+          `${plan} Subscription`,
+
+        order_id:
+          data.order_id || data.id,
+
+        method: {
+          upi: true,
+          card: true,
+          netbanking: true,
+          wallet: true,
+          paylater: true,
+        },
+
+        handler: async function (
+          response
+        ) {
+
+          try {
+
+            await API.post(
+              "/payments/verify",
+              {
+                razorpay_order_id:
+                  response.razorpay_order_id,
+
+                razorpay_payment_id:
+                  response.razorpay_payment_id,
+
+                razorpay_signature:
+                  response.razorpay_signature,
+
+                plan:
+                  plan.toLowerCase(),
+              }
+            );
+
+            await loadSubscription();
+
+            alert(
+              `${plan} Plan Activated`
+            );
+
+          } catch (error) {
+
+            console.log(error);
+
+            alert(
+              "Payment Verification Failed"
+            );
+          }
+        },
+
+        prefill: {
+          name: "Test User",
+          email: "test@example.com",
+          contact: "9999999999",
+        },
+
+        theme: {
+          color: "#4f46e5",
+        },
+      };
+
+      const razorpay =
+        new window.Razorpay(options);
+
+      razorpay.on(
+        "payment.failed",
+        function (response) {
+
+          console.log(
+            response.error
+          );
+
+          alert("Payment Failed");
+        }
+      );
+
+      razorpay.open();
+    }
+
+  } catch (error) {
+
+    console.log(error);
+
+    alert(
+      "Unable to Process Payment"
+    );
+
+  } finally {
+
+    setLoading(false);
+  }
+};
 
   // =====================================
   // PLAN INFO
@@ -345,7 +379,7 @@ export default function Billing() {
 
               {subscription
                 ? `${subscription.credits} Credits Remaining`
-                : "0 Credits Remaining"}
+                : "500 Credits Remaining"}
 
             </p>
 

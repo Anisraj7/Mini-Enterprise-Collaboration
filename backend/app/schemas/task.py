@@ -123,6 +123,12 @@ class TaskOut(TaskBase):
 
     document: Optional[str] = None
 
+    sla_status: Optional[str] = None
+
+    sla_due_time: Optional[datetime] = None
+
+    is_sla_breached: bool = False
+
     created_at: datetime
 
     updated_at: datetime

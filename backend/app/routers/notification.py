@@ -20,6 +20,8 @@ from app.schemas.notification import (
 from app.services.notification_service import (
     get_notifications_service,
     mark_notification_read_service,
+    get_unread_count_service,
+    mark_all_notifications_read_service,
 )
 
 router = APIRouter(
@@ -28,6 +30,9 @@ router = APIRouter(
 )
 
 
+# =========================================
+# GET USER NOTIFICATIONS
+# =========================================
 @router.get(
     "/",
     response_model=Page[NotificationOut],
@@ -42,7 +47,26 @@ def get_notifications(
     )
 
 
-@router.patch("/{notification_id}/read")
+# =========================================
+# GET UNREAD COUNT
+# =========================================
+@router.get("/unread-count")
+def get_unread_count(
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    return get_unread_count_service(
+        db,
+        user,
+    )
+
+
+# =========================================
+# MARK SINGLE NOTIFICATION READ
+# =========================================
+@router.patch(
+    "/{notification_id}/read"
+)
 def mark_read(
     notification_id: int,
     db: Session = Depends(get_db),
@@ -50,6 +74,20 @@ def mark_read(
 ):
     return mark_notification_read_service(
         notification_id,
+        db,
+        user,
+    )
+
+
+# =========================================
+# MARK ALL NOTIFICATIONS READ
+# =========================================
+@router.patch("/read-all")
+def mark_all_read(
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    return mark_all_notifications_read_service(
         db,
         user,
     )

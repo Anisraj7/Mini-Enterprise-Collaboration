@@ -10,7 +10,6 @@ from app.repository.user_repository import (
     get_assignable_users_query,
 )
 
-
 def get_all_users_service(db: Session, current_user: User):
     cache_key = f"users:list:{current_user.organization_id}"
 

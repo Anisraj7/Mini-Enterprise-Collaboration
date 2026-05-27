@@ -1,5 +1,4 @@
-﻿
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 
 import {
   DndContext,
@@ -34,6 +33,7 @@ import API from "../api/axios";
 import { getPageItems } from "../api/pagination";
 import { getUserWebSocketUrl } from "../api/websocket";
 import Navbar from "../components/Navbar";
+import SLABadge from "../components/SLABadge";
 
 const columns = [
   {
@@ -78,7 +78,6 @@ const validFlow = {
 };
 
 function Column({ column, tasks, children }) {
-
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,
   });
@@ -101,15 +100,11 @@ function Column({ column, tasks, children }) {
         ${isOver ? "ring-2 ring-indigo-500 scale-[1.01]" : ""}
       `}
     >
-
       <div className="flex items-center justify-between mb-5">
-
         <div className="flex items-center gap-2">
           <Icon size={18} />
 
-          <h2 className="font-bold text-gray-700">
-            {column.label}
-          </h2>
+          <h2 className="font-bold text-gray-700">{column.label}</h2>
         </div>
 
         <div
@@ -125,44 +120,29 @@ function Column({ column, tasks, children }) {
         >
           {tasks.length}
         </div>
-
       </div>
 
       {children}
-
     </div>
   );
 }
 
-function TaskCard({
-  task,
-  onOpen,
-  canDrag,
-  isOverlay = false,
-}) {
-
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    isDragging,
-  } = useDraggable({
-    id: String(task.id),
-    data: {
-      task,
-      currentStatus: task.status,
-    },
-    disabled: !canDrag || isOverlay,
-  });
+function TaskCard({ task, onOpen, canDrag, isOverlay = false }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    useDraggable({
+      id: String(task.id),
+      data: {
+        task,
+        currentStatus: task.status,
+      },
+      disabled: !canDrag || isOverlay,
+    });
 
   const style = {
     transform: CSS.Translate.toString(transform),
   };
 
-  const overdue =
-    task.due_date &&
-    new Date(task.due_date) < new Date();
+  const overdue = task.due_date && new Date(task.due_date) < new Date();
 
   return (
     <div
@@ -187,17 +167,11 @@ function TaskCard({
         ${isOverlay ? "w-80 rotate-2 shadow-2xl" : ""}
       `}
     >
-
       <div className="flex justify-between items-start mb-3">
-
         <div>
-          <h3 className="font-semibold text-gray-800 text-sm">
-            {task.title}
-          </h3>
+          <h3 className="font-semibold text-gray-800 text-sm">{task.title}</h3>
 
-          <p className="text-xs text-gray-400 mt-1">
-            #{task.id}
-          </p>
+          <p className="text-xs text-gray-400 mt-1">#{task.id}</p>
         </div>
 
         <div
@@ -211,23 +185,19 @@ function TaskCard({
               task.priority === "high"
                 ? "bg-red-100 text-red-600"
                 : task.priority === "medium"
-                ? "bg-yellow-100 text-yellow-700"
-                : "bg-green-100 text-green-600"
+                  ? "bg-yellow-100 text-yellow-700"
+                  : "bg-green-100 text-green-600"
             }
           `}
         >
           {task.priority}
         </div>
-
       </div>
 
       <div className="space-y-2 text-xs text-gray-500">
-
         <div className="flex items-center gap-2">
           <User size={14} />
-          <span>
-            {task.assigned_to_name || "Unassigned"}
-          </span>
+          <span>{task.assigned_to_name || "Unassigned"}</span>
         </div>
 
         <div className="flex items-center gap-2">
@@ -247,7 +217,24 @@ function TaskCard({
           </div>
         )}
 
+        {task.sla_status && (
+          <div className="flex items-center justify-between gap-2 rounded-lg bg-gray-50 px-2 py-2">
+            <SLABadge status={task.sla_status} />
+            <span className="text-[11px] text-gray-500">
+              {task.sla_due_time
+                ? new Date(task.sla_due_time).toLocaleString()
+                : "No SLA due time"}
+            </span>
+          </div>
+        )}
       </div>
+
+      {task.is_sla_breached && (
+        <div className="mt-3 bg-red-50 text-red-600 text-xs px-2 py-2 rounded-lg font-medium flex items-center gap-2">
+          <AlertTriangle size={14} />
+          SLA Breached
+        </div>
+      )}
 
       {overdue && (
         <div className="mt-3 bg-red-50 text-red-600 text-xs px-2 py-2 rounded-lg font-medium flex items-center gap-2">
@@ -261,7 +248,6 @@ function TaskCard({
           Read-only access
         </div>
       )}
-
     </div>
   );
 }
@@ -303,16 +289,12 @@ export default function KanbanBoard() {
       activationConstraint: {
         distance: 8,
       },
-    })
+    }),
   );
 
   const fetchTasks = async () => {
-
     try {
-
-      const response = await API.get(
-        "/tasks/kanban"
-      );
+      const response = await API.get("/tasks/kanban");
 
       setTasks({
         todo: [],
@@ -321,57 +303,37 @@ export default function KanbanBoard() {
         done: [],
         ...response.data,
       });
-
     } catch (err) {
-
-      setError(
-        err.response?.data?.detail ||
-        "Unable to load tasks"
-      );
+      setError(err.response?.data?.detail || "Unable to load tasks");
     }
   };
 
   useEffect(() => {
-
     const loadInitialData = async () => {
-
       try {
-
-        const userRes = await API.get(
-          "/auth/me"
-        );
+        const userRes = await API.get("/auth/me");
 
         setUser(userRes.data);
 
         await fetchTasks();
-
       } catch (err) {
-
-        setError(
-          err.response?.data?.detail ||
-          "Unable to load board"
-        );
+        setError(err.response?.data?.detail || "Unable to load board");
       }
     };
 
     loadInitialData();
-
   }, []);
 
   useEffect(() => {
-
     if (!user) return;
 
-    const ws = new WebSocket(
-      getUserWebSocketUrl(user.id)
-    );
+    const ws = new WebSocket(getUserWebSocketUrl(user.id));
 
     ws.onopen = () => {
       setSocketConnected(true);
     };
 
     ws.onmessage = async (event) => {
-
       toast.success(event.data);
 
       await fetchTasks();
@@ -384,17 +346,13 @@ export default function KanbanBoard() {
     return () => {
       ws.close();
     };
-
   }, [user]);
 
   const handleDragStart = (event) => {
-    setActiveTask(
-      event.active.data.current?.task
-    );
+    setActiveTask(event.active.data.current?.task);
   };
 
   const handleDragEnd = async (event) => {
-
     const { active, over } = event;
 
     setActiveTask(null);
@@ -403,121 +361,74 @@ export default function KanbanBoard() {
 
     const taskId = Number(active.id);
 
-    const currentStatus =
-      active.data.current?.currentStatus;
+    const currentStatus = active.data.current?.currentStatus;
 
     const newStatus = over.id;
 
-    if (
-      !validFlow[currentStatus]?.includes(
-        newStatus
-      )
-    ) {
-
-      toast.error(
-        "Invalid workflow transition"
-      );
+    if (!validFlow[currentStatus]?.includes(newStatus)) {
+      toast.error("Invalid workflow transition");
 
       return;
     }
 
     try {
+      await API.patch(`/tasks/${taskId}/status`, {
+        status: newStatus,
+      });
 
-      await API.patch(
-        `/tasks/${taskId}/status`,
-        {
-          status: newStatus,
-        }
-      );
-
-      toast.success(
-        `Moved to ${newStatus}`
-      );
+      toast.success(`Moved to ${newStatus}`);
 
       await fetchTasks();
-
     } catch (err) {
-
-      toast.error(
-        err.response?.data?.detail ||
-        "Unable to move task"
-      );
+      toast.error(err.response?.data?.detail || "Unable to move task");
     }
   };
 
   const openTask = async (task) => {
-
     try {
-
       setSelectedTask(task);
 
-      const response = await API.get(
-        `/tasks/${task.id}/comments`
-      );
+      const response = await API.get(`/tasks/${task.id}/comments`);
 
       setComments(getPageItems(response.data));
 
-      const docsResponse = await API.get(
-        `/documents/task/${task.id}`
-      );
+      const docsResponse = await API.get(`/documents/task/${task.id}`);
 
       setDocuments(getPageItems(docsResponse.data));
-
     } catch {
-
-      toast.error(
-        "Unable to load comments"
-      );
+      toast.error("Unable to load comments");
     }
   };
 
   const uploadDocument = async () => {
-
     if (!selectedFile || !selectedTask) return;
 
     const formData = new FormData();
     formData.append("file", selectedFile);
 
     try {
-
-      await API.post(
-        `/documents/upload?task_id=${selectedTask.id}`,
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
+      await API.post(`/documents/upload?task_id=${selectedTask.id}`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
 
       toast.success("Document uploaded");
       setSelectedFile(null);
 
-      const docsResponse = await API.get(
-        `/documents/task/${selectedTask.id}`
-      );
+      const docsResponse = await API.get(`/documents/task/${selectedTask.id}`);
 
       setDocuments(getPageItems(docsResponse.data));
-
     } catch (err) {
-
-      toast.error(
-        err.response?.data?.detail ||
-        "Unable to upload document"
-      );
+      toast.error(err.response?.data?.detail || "Unable to upload document");
     }
   };
 
   const downloadDocument = async (doc) => {
-
     try {
-
-      const response = await API.get(
-        `/documents/${doc.id}`,
-        {
-          responseType: "blob",
-        }
-      );
+      const response = await API.get(`/documents/${doc.id}`, {
+        responseType: "blob",
+      });
 
       const url = URL.createObjectURL(response.data);
       const link = document.createElement("a");
@@ -525,83 +436,60 @@ export default function KanbanBoard() {
       link.download = doc.file_name;
       link.click();
       URL.revokeObjectURL(url);
-
     } catch {
       toast.error("Unable to download document");
     }
   };
 
   const addComment = async () => {
-
     if (!newComment.trim()) return;
 
     try {
-
-      await API.post(
-        `/tasks/${selectedTask.id}/comments`,
-        {
-          content: newComment,
-          is_internal: isInternal,
-        }
-      );
+      await API.post(`/tasks/${selectedTask.id}/comments`, {
+        content: newComment,
+        is_internal: isInternal,
+      });
 
       toast.success("Comment added");
 
       setNewComment("");
 
-      const response = await API.get(
-        `/tasks/${selectedTask.id}/comments`
-      );
+      const response = await API.get(`/tasks/${selectedTask.id}/comments`);
 
       setComments(getPageItems(response.data));
-
     } catch {
-      toast.error(
-        "Unable to add comment"
-      );
+      toast.error("Unable to add comment");
     }
   };
 
   const filteredTasks = useMemo(() => {
-
     const result = {};
 
     Object.keys(tasks).forEach((key) => {
-
       result[key] = tasks[key]
 
         .filter(
           (task) =>
-            priorityFilter === "all" ||
-            task.priority === priorityFilter
+            priorityFilter === "all" || task.priority === priorityFilter,
         )
 
-        .filter(
-          (task) =>
-            task.title
-              .toLowerCase()
-              .includes(search.toLowerCase())
+        .filter((task) =>
+          task.title.toLowerCase().includes(search.toLowerCase()),
         );
     });
 
     return result;
-
   }, [tasks, priorityFilter, search]);
 
-  const canDrag =
-    user?.role === "admin" ||
-    user?.role === "manager";
+  const canDrag = user?.role === "admin" || user?.role === "manager";
 
   return (
     <div className="bg-gray-100 min-h-screen">
-
       <Navbar />
 
       <div className="max-w-[1800px] mx-auto p-6">
-
         {/* HEADER */}
         <div className="flex flex-wrap justify-between items-center gap-4 mb-8">
-
           <div>
             <h1 className="text-4xl font-bold text-gray-800">
               Enterprise Workflow Board
@@ -612,60 +500,38 @@ export default function KanbanBoard() {
             </p>
 
             <div className="flex items-center gap-2 mt-3 text-sm text-gray-500">
-
               {socketConnected ? (
                 <Wifi className="text-green-500" size={16} />
               ) : (
                 <WifiOff className="text-red-500" size={16} />
               )}
 
-              {socketConnected
-                ? "Live sync connected"
-                : "Disconnected"}
-
+              {socketConnected ? "Live sync connected" : "Disconnected"}
             </div>
-
           </div>
 
           <div className="flex flex-wrap gap-3">
-
             <input
               value={search}
-              onChange={(e) =>
-                setSearch(e.target.value)
-              }
+              onChange={(e) => setSearch(e.target.value)}
               placeholder="Search tasks"
               className="bg-white border rounded-xl px-4 py-2 shadow-sm"
             />
 
             <select
               value={priorityFilter}
-              onChange={(e) =>
-                setPriorityFilter(e.target.value)
-              }
+              onChange={(e) => setPriorityFilter(e.target.value)}
               className="bg-white border rounded-xl px-4 py-2 shadow-sm"
             >
+              <option value="all">All Priority</option>
 
-              <option value="all">
-                All Priority
-              </option>
+              <option value="high">High</option>
 
-              <option value="high">
-                High
-              </option>
+              <option value="medium">Medium</option>
 
-              <option value="medium">
-                Medium
-              </option>
-
-              <option value="low">
-                Low
-              </option>
-
+              <option value="low">Low</option>
             </select>
-
           </div>
-
         </div>
 
         {/* ERROR */}
@@ -681,267 +547,302 @@ export default function KanbanBoard() {
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
-
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-
             {columns.map((column) => (
-
               <Column
                 key={column.id}
                 column={column}
                 tasks={filteredTasks[column.id]}
               >
-
                 {filteredTasks[column.id].map((task) => (
-
                   <TaskCard
                     key={task.id}
                     task={task}
                     onOpen={openTask}
                     canDrag={canDrag}
                   />
-
                 ))}
-
               </Column>
-
             ))}
-
           </div>
 
           <DragOverlay>
-
             {activeTask ? (
-              <TaskCard
-                task={activeTask}
-                onOpen={() => {}}
-                isOverlay
-                canDrag
-              />
+              <TaskCard task={activeTask} onOpen={() => {}} isOverlay canDrag />
             ) : null}
-
           </DragOverlay>
-
         </DndContext>
-
       </div>
 
       {/* TASK DETAILS MODAL */}
       {selectedTask && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm overflow-y-auto">
+          <div className="min-h-screen flex items-start justify-center p-4 md:p-8">
+            <div
+              className="
+          bg-white
+          w-full
+          max-w-3xl
+          rounded-3xl
+          shadow-2xl
+          relative
+          my-10
+        
+        "
+            >
+              {/* STICKY HEADER */}
+              <div className="sticky top-0 z-10 bg-white border-b px-6 py-5 rounded-t-3xl flex justify-between items-start">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-800">
+                    {selectedTask.title}
+                  </h2>
 
-        <div className="fixed inset-0 bg-black/40 flex justify-center items-center z-50 p-4">
-
-          <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl p-6">
-
-            <div className="flex justify-between items-center mb-6">
-
-              <div>
-                <h2 className="text-2xl font-bold text-gray-800">
-                  {selectedTask.title}
-                </h2>
-
-                <p className="text-gray-400 text-sm mt-1">
-                  Task #{selectedTask.id}
-                </p>
-              </div>
-
-              <button
-                onClick={() =>
-                  setSelectedTask(null)
-                }
-                className="text-gray-400 hover:text-gray-600"
-              >
-                Close
-              </button>
-
-            </div>
-
-            {/* ASSIGNEE */}
-            <div className="grid md:grid-cols-3 gap-4 mb-6">
-
-              <div className="bg-gray-50 p-4 rounded-2xl">
-                <p className="text-xs text-gray-400 mb-1">
-                  Assigned To
-                </p>
-
-                <p className="font-semibold text-gray-700">
-                  {selectedTask.assigned_to_name || "Unassigned"}
-                </p>
-              </div>
-
-              <div className="bg-gray-50 p-4 rounded-2xl">
-                <p className="text-xs text-gray-400 mb-1">
-                  Priority
-                </p>
-
-                <p className="font-semibold text-gray-700 capitalize">
-                  {selectedTask.priority}
-                </p>
-              </div>
-
-              <div className="bg-gray-50 p-4 rounded-2xl">
-                <p className="text-xs text-gray-400 mb-1">
-                  Status
-                </p>
-
-                <p className="font-semibold text-gray-700 capitalize">
-                  {selectedTask.status.replace("_", " ")}
-                </p>
-              </div>
-
-            </div>
-
-            {canDrag && (
-              <div className="mb-6">
-                <button
-                  onClick={() =>
-                    navigate(
-                      `/tasks/${selectedTask.id}/assign`
-                    )
-                  }
-                  className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-xl text-sm font-medium"
-                >
-                  Assign To
-                </button>
-              </div>
-            )}
-
-            {/* DOCUMENTS */}
-            <div className="mb-6">
-
-              <div className="flex items-center gap-2 mb-3">
-                <FileText size={18} />
-                <h3 className="font-semibold text-gray-700">
-                  Documents
-                </h3>
-              </div>
-
-              <div className="flex flex-wrap gap-2 mb-3">
-                <input
-                  type="file"
-                  onChange={(e) =>
-                    setSelectedFile(e.target.files?.[0] || null)
-                  }
-                  className="text-sm"
-                />
-
-                <button
-                  onClick={uploadDocument}
-                  disabled={!selectedFile}
-                  className="bg-sky-600 disabled:bg-gray-300 text-white px-3 py-2 rounded-xl text-sm flex items-center gap-2"
-                >
-                  <Upload size={14} />
-                  Upload
-                </button>
-              </div>
-
-              <div className="space-y-2 max-h-28 overflow-y-auto">
-                {documents.length === 0 ? (
-                  <p className="text-gray-400 text-sm">
-                    No documents yet
+                  <p className="text-gray-400 text-sm mt-1">
+                    Task #{selectedTask.id}
                   </p>
-                ) : (
-                  documents.map((doc) => (
-                    <button
-                      key={doc.id}
-                      onClick={() => downloadDocument(doc)}
-                      className="bg-gray-50 hover:bg-gray-100 p-3 rounded-xl flex items-center justify-between text-sm"
-                    >
-                      <span>
-                        {doc.file_name} v{doc.version}
-                      </span>
-                      <Download size={14} />
-                    </button>
-                  ))
-                )}
+                </div>
+
+                <button
+                  onClick={() => setSelectedTask(null)}
+                  className="
+              bg-gray-100
+              hover:bg-gray-200
+              text-gray-600
+              px-4
+              py-2
+              rounded-xl
+              text-sm
+              font-medium
+              transition
+            "
+                >
+                  Close
+                </button>
               </div>
 
-            </div>
+              {/* MODAL BODY */}
+              <div className="p-6">
+                {/* ASSIGNEE */}
+                <div className="grid md:grid-cols-3 gap-4 mb-6">
+                  <div className="bg-gray-50 p-4 rounded-2xl">
+                    <p className="text-xs text-gray-400 mb-1">Assigned To</p>
 
-            {/* COMMENTS */}
-            <div className="max-h-[300px] overflow-y-auto space-y-3 mb-5">
-
-              {comments.length === 0 ? (
-                <p className="text-gray-400 text-sm">
-                  No comments yet
-                </p>
-              ) : (
-
-                comments.map((comment) => (
-
-                  <div
-                    key={comment.id}
-                    className="bg-gray-100 p-4 rounded-2xl"
-                  >
-
-                    <p className="text-gray-700">
-                      {comment.content}
+                    <p className="font-semibold text-gray-700">
+                      {selectedTask.assigned_to_name || "Unassigned"}
                     </p>
-
-                    <p className="text-xs text-gray-400 mt-2">
-                      {comment.user_name || `User ${comment.user_id}`}
-                      {" â€¢ "}
-                      {comment.is_internal
-                        ? "Internal"
-                        : "Public"}
-                      {" â€¢ "}
-                      {new Date(
-                        comment.created_at
-                      ).toLocaleString()}
-                    </p>
-
                   </div>
 
-                ))
+                  <div className="bg-gray-50 p-4 rounded-2xl">
+                    <p className="text-xs text-gray-400 mb-1">Priority</p>
 
-              )}
+                    <p className="font-semibold text-gray-700 capitalize">
+                      {selectedTask.priority}
+                    </p>
+                  </div>
 
-            </div>
+                  <div className="bg-gray-50 p-4 rounded-2xl">
+                    <p className="text-xs text-gray-400 mb-1">Status</p>
 
-            {/* COMMENT BOX */}
-            <textarea
-              value={newComment}
-              onChange={(e) =>
-                setNewComment(e.target.value)
-              }
-              placeholder="Write comment"
-              className="border rounded-2xl w-full p-4 mb-4"
-            />
+                    <p className="font-semibold text-gray-700 capitalize">
+                      {selectedTask.status.replace("_", " ")}
+                    </p>
+                  </div>
 
-            <div className="flex justify-between items-center">
+                  <div className="bg-gray-50 p-4 rounded-2xl">
+                    <p className="text-xs text-gray-400 mb-1">SLA Status</p>
 
-              <label className="flex items-center gap-2 text-sm text-gray-600">
+                    <div className="font-semibold text-gray-700">
+                      {selectedTask.sla_status ? (
+                        <SLABadge status={selectedTask.sla_status} />
+                      ) : (
+                        "Not tracked"
+                      )}
+                    </div>
+                  </div>
 
-                <input
-                  type="checkbox"
-                  checked={isInternal}
-                  onChange={(e) =>
-                    setIsInternal(
-                      e.target.checked
-                    )
-                  }
+                  <div className="bg-gray-50 p-4 rounded-2xl">
+                    <p className="text-xs text-gray-400 mb-1">SLA Due Time</p>
+
+                    <p className="font-semibold text-gray-700">
+                      {selectedTask.sla_due_time
+                        ? new Date(selectedTask.sla_due_time).toLocaleString()
+                        : "N/A"}
+                    </p>
+                  </div>
+
+                  <div className="bg-gray-50 p-4 rounded-2xl">
+                    <p className="text-xs text-gray-400 mb-1">SLA Breached</p>
+
+                    <p className="font-semibold text-gray-700">
+                      {selectedTask.is_sla_breached ? "Yes" : "No"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* ASSIGN */}
+                {canDrag && (
+                  <div className="mb-6">
+                    <button
+                      onClick={() =>
+                        navigate(`/tasks/${selectedTask.id}/assign`)
+                      }
+                      className="
+                  bg-sky-600
+                  hover:bg-sky-700
+                  text-white
+                  px-4
+                  py-2
+                  rounded-xl
+                  text-sm
+                  font-medium
+                "
+                    >
+                      Assign To
+                    </button>
+                  </div>
+                )}
+
+                {/* DOCUMENTS */}
+                <div className="mb-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    <FileText size={18} />
+                    <h3 className="font-semibold text-gray-700">Documents</h3>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    <input
+                      type="file"
+                      onChange={(e) =>
+                        setSelectedFile(e.target.files?.[0] || null)
+                      }
+                      className="text-sm"
+                    />
+
+                    <button
+                      onClick={uploadDocument}
+                      disabled={!selectedFile}
+                      className="
+                  bg-sky-600
+                  disabled:bg-gray-300
+                  text-white
+                  px-3
+                  py-2
+                  rounded-xl
+                  text-sm
+                  flex
+                  items-center
+                  gap-2
+                "
+                    >
+                      <Upload size={14} />
+                      Upload
+                    </button>
+                  </div>
+
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {documents.length === 0 ? (
+                      <p className="text-gray-400 text-sm">No documents yet</p>
+                    ) : (
+                      documents.map((doc) => (
+                        <button
+                          key={doc.id}
+                          onClick={() => downloadDocument(doc)}
+                          className="
+                      w-full
+                      bg-gray-50
+                      hover:bg-gray-100
+                      p-3
+                      rounded-xl
+                      flex
+                      items-center
+                      justify-between
+                      text-sm
+                    "
+                        >
+                          <span>
+                            {doc.file_name} v{doc.version}
+                          </span>
+
+                          <Download size={14} />
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* COMMENTS */}
+                <div className="max-h-[300px] overflow-y-auto space-y-3 mb-5 pr-1">
+                  {comments.length === 0 ? (
+                    <p className="text-gray-400 text-sm">No comments yet</p>
+                  ) : (
+                    comments.map((comment) => (
+                      <div
+                        key={comment.id}
+                        className="bg-gray-100 p-4 rounded-2xl"
+                      >
+                        <p className="text-gray-700">{comment.content}</p>
+
+                        <p className="text-xs text-gray-400 mt-2">
+                          {comment.user_name || `User ${comment.user_id}`}
+
+                          {" • "}
+
+                          {comment.is_internal ? "Internal" : "Public"}
+
+                          {" • "}
+
+                          {new Date(comment.created_at).toLocaleString()}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* COMMENT BOX */}
+                <textarea
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  placeholder="Write comment"
+                  className="
+              border
+              rounded-2xl
+              w-full
+              p-4
+              mb-4
+              min-h-[120px]
+            "
                 />
 
-                Internal Note
+                <div className="flex justify-between items-center">
+                  <label className="flex items-center gap-2 text-sm text-gray-600">
+                    <input
+                      type="checkbox"
+                      checked={isInternal}
+                      onChange={(e) => setIsInternal(e.target.checked)}
+                    />
+                    Internal Note
+                  </label>
 
-              </label>
-
-              <button
-                onClick={addComment}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl font-medium"
-              >
-                Add Comment
-              </button>
-
+                  <button
+                    onClick={addComment}
+                    className="
+                bg-indigo-600
+                hover:bg-indigo-700
+                text-white
+                px-5
+                py-2
+                rounded-xl
+                font-medium
+              "
+                  >
+                    Add Comment
+                  </button>
+                </div>
+              </div>
             </div>
-
           </div>
-
         </div>
-
       )}
-
     </div>
   );
 }
-

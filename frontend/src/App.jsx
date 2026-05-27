@@ -14,6 +14,14 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Billing from "./pages/Billing";
 import PaymentSuccess from "./pages/PaymentSuccess";
 
+import SLARules from "./pages/SLARules";
+import SLADashboard from "./pages/SLADashboard";
+import ApprovalEscalations from "./pages/ApprovalEscalations";
+import ApprovalDelegations from "./pages/ApprovalDelegations";
+import NotificationPreferences from "./pages/NotificationPreferences";
+import AuditLogs from "./pages/AuditLogs";
+
+
 function App() {
   return (
     <BrowserRouter>
@@ -95,6 +103,22 @@ function App() {
         />
 
         <Route path="/payment-success" element={<PaymentSuccess />} />
+
+        <Route path="/admin/sla-rules" element={<ProtectedRoute><SLARules /></ProtectedRoute>} />
+        <Route path="/dashboard/sla" element={<ProtectedRoute><SLADashboard /></ProtectedRoute>} />
+        <Route
+          path="/approval-escalations"
+          element={<ProtectedRoute><ApprovalEscalations /></ProtectedRoute>}
+        />
+        <Route
+          path="/approval-delegations"
+          element={<ProtectedRoute><ApprovalDelegations /></ProtectedRoute>}
+        />
+        <Route
+          path="/settings/notification-preferences"
+          element={<ProtectedRoute><NotificationPreferences /></ProtectedRoute>}
+        />
+        <Route path="/admin/audit-logs" element={<ProtectedRoute><AuditLogs /></ProtectedRoute>} />
       </Routes>
     </BrowserRouter>
   );

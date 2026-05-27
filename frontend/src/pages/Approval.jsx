@@ -13,12 +13,17 @@ import {
 } from "lucide-react";
 
 import toast from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 
 import API from "../api/axios";
 import { getPageItems } from "../api/pagination";
 import Navbar from "../components/Navbar";
+import SLABadge from "../components/SLABadge";
+import StatusBadge from "../components/StatusBadge";
 
 export default function Approval() {
+  const navigate = useNavigate();
+
   const [approvals, setApprovals] = useState([]);
 
   const [history, setHistory] = useState([]);
@@ -272,7 +277,7 @@ export default function Approval() {
 
                 <option>Document Approval</option>
 
-                <option>Workflow Approval</option>
+                <option>Leave Approval</option>
               </select>
             </div>
           </div>
@@ -355,6 +360,29 @@ export default function Approval() {
                   </div>
                 </div>
 
+                <div className="mt-5 grid gap-4 md:grid-cols-4">
+                  <div className="rounded-2xl bg-gray-50 p-4">
+                    <p className="mb-2 text-xs text-gray-400">SLA Status</p>
+                    {approval.sla_status ? <SLABadge status={approval.sla_status} /> : <span className="text-sm text-gray-500">Not tracked</span>}
+                  </div>
+                  <div className="rounded-2xl bg-gray-50 p-4">
+                    <p className="mb-2 text-xs text-gray-400">SLA Due Time</p>
+                    <p className="text-sm font-semibold text-gray-700">
+                      {approval.sla_due_time ? new Date(approval.sla_due_time).toLocaleString() : "N/A"}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl bg-gray-50 p-4">
+                    <p className="mb-2 text-xs text-gray-400">Escalated</p>
+                    <StatusBadge status={approval.is_escalated ? "Active" : "Disabled"} />
+                  </div>
+                  <div className="rounded-2xl bg-gray-50 p-4">
+                    <p className="mb-2 text-xs text-gray-400">Escalated To</p>
+                    <p className="text-sm font-semibold text-gray-700">
+                      {approval.current_escalation_to || "N/A"}
+                    </p>
+                  </div>
+                </div>
+
                 {/* INFO */}
                 <div className="flex flex-wrap gap-6 mt-5 text-sm text-gray-500">
                   <div className="flex items-center gap-2">
@@ -422,6 +450,16 @@ export default function Approval() {
                     <History size={16} />
                     History
                   </button>
+
+                  {(user?.role === "admin" || user?.role === "manager") && (
+                    <button
+                      onClick={() => navigate("/approval-escalations")}
+                      className="bg-orange-100 hover:bg-orange-200 text-orange-700 px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition"
+                    >
+                      <ShieldCheck size={16} />
+                      Escalate
+                    </button>
+                  )}
                 </div>
 
                 {/* HISTORY */}

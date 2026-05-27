@@ -26,8 +26,8 @@ from app.services.notification_service import (
     dispatch_kanban_update,
 )
 from app.services.event_log_service import record_event
+from app.services.sla_tracking_service import SLATrackingService
 
-from app.utils.credits import consume_credits
 
 from app.repository.task_repository import (
     get_task_by_id,
@@ -209,11 +209,16 @@ def create_task_service(
 
     create_task_repository(db, new_task)
 
-    consume_credits(
-        db,
-        current_user.organization_id,
-        1,
-    )
+    try:
+        SLATrackingService.start_sla_tracking(
+            db,
+            "Task",
+            new_task.id,
+            new_task.priority,
+        )
+        db.refresh(new_task)
+    except HTTPException:
+        pass
 
     record_event(
         db,
@@ -302,11 +307,16 @@ def create_task_with_document_service(
 
     create_task_repository(db, new_task)
 
-    consume_credits(
-        db,
-        current_user.organization_id,
-        1,
-    )
+    try:
+        SLATrackingService.start_sla_tracking(
+            db,
+            "Task",
+            new_task.id,
+            new_task.priority,
+        )
+        db.refresh(new_task)
+    except HTTPException:
+        pass
 
     commit_refresh(db, new_task)
 
@@ -403,6 +413,9 @@ def kanban_service(
                 "updated_by": task.updated_by,
                 "created_at": task.created_at,
                 "updated_at": task.updated_at,
+                "sla_status": task.sla_status,
+                "sla_due_time": task.sla_due_time,
+                "is_sla_breached": task.is_sla_breached,
             }
         )
 
@@ -541,6 +554,15 @@ def update_task_status_service(
     )
 
     update_task_repository(db, task)
+
+    if task.status == "done":
+        try:
+            tracking = SLATrackingService.get_sla_record(db, "Task", task.id)
+            if tracking and not tracking.completed_time:
+                SLATrackingService.complete_sla(db, tracking.id)
+                db.refresh(task)
+        except HTTPException:
+            pass
 
     commit_refresh(db, task)
 

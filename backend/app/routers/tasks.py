@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from fastapi_pagination import Page
 
-from app.core.permissions import get_current_user, require_role
+from app.core.permissions import get_current_user, require_roles
 from app.db.database import get_db
 
 from app.models.user import User
@@ -44,7 +44,7 @@ def create_task(
     task: TaskCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(
-        require_role(["admin", "manager"])
+        require_roles(["admin", "manager"])
     ),
 ):
     return create_task_service(
@@ -68,7 +68,7 @@ def create_task_with_document(
     document: UploadFile = File(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(
-        require_role(["admin", "manager"])
+        require_roles(["admin", "manager"])
     ),
 ):
     return create_task_with_document_service(
@@ -113,7 +113,7 @@ def get_kanban(
 def assignment_recommendation(
     db: Session = Depends(get_db),
     current_user: User = Depends(
-        require_role(["admin", "manager"])
+        require_roles(["admin", "manager"])
     ),
 ):
     return recommendation_service(
@@ -183,7 +183,7 @@ def assign_task(
     assignment: TaskAssign,
     db: Session = Depends(get_db),
     current_user: User = Depends(
-        require_role(["admin", "manager"])
+        require_roles(["admin", "manager"])
     ),
 ):
     return assign_task_service(
@@ -202,7 +202,7 @@ def smart_assign_task(
     task_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(
-        require_role(["admin", "manager"])
+        require_roles(["admin", "manager"])
     ),
 ):
     return smart_assign_task_service(
@@ -217,7 +217,7 @@ def delete_task(
     task_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(
-        require_role(["admin"])
+        require_roles(["admin"])
     ),
 ):
     return delete_task_service(
