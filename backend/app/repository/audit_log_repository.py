@@ -1,3 +1,4 @@
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.audit_log import (
@@ -27,10 +28,11 @@ class AuditLogRepository:
     ):
 
         return (
-            db.query(AuditLog)
+            db.execute(select(AuditLog)
             .order_by(
                 AuditLog.id.desc()
-            )
+            ))
+            .scalars()
             .all()
         )
 
@@ -41,11 +43,11 @@ class AuditLogRepository:
     ):
 
         return (
-            db.query(AuditLog)
-            .filter(
+            db.execute(select(AuditLog).where(
                 AuditLog.id
                 == audit_log_id
-            )
+            ))
+            .scalars()
             .first()
         )
 
@@ -56,14 +58,14 @@ class AuditLogRepository:
     ):
 
         return (
-            db.query(AuditLog)
-            .filter(
+            db.execute(select(AuditLog).where(
                 AuditLog.module_name
                 == module_name
             )
             .order_by(
                 AuditLog.id.desc()
-            )
+            ))
+            .scalars()
             .all()
         )
 
@@ -74,13 +76,13 @@ class AuditLogRepository:
     ):
 
         return (
-            db.query(AuditLog)
-            .filter(
+            db.execute(select(AuditLog).where(
                 AuditLog.user_id
                 == user_id
             )
             .order_by(
                 AuditLog.id.desc()
-            )
+            ))
+            .scalars()
             .all()
         )

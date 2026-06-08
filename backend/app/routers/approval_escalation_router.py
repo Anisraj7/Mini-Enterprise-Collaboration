@@ -3,10 +3,16 @@ from fastapi import (
     Depends,
 )
 
+from fastapi_pagination import Page
+from fastapi_pagination import paginate
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
-from app.core.permissions import require_manager_or_admin, require_roles
+
+from app.core.permissions import (
+    require_manager_or_admin,
+    require_roles,
+)
 
 from app.schemas.approval_escalation import (
     ApprovalEscalationCreate,
@@ -45,50 +51,66 @@ def create_escalation(
 
 @router.get(
     "",
-    response_model=list[
+    response_model=Page[
         ApprovalEscalationResponse
     ],
 )
 def get_all_escalations(
     db: Session = Depends(get_db),
-    user=Depends(require_roles(["admin", "manager", "auditor"])),
-):
-    return (
-        ApprovalEscalationService.get_all_escalations(
-            db
+    user=Depends(
+        require_roles(
+            [
+                "organization_admin",
+                "workspace_admin",
+                "manager",
+            ]
         )
-    )
+    ),
+):
+    return paginate(ApprovalEscalationService.get_all_escalations(db))
 
 
 @router.get(
     "/pending",
-    response_model=list[
+    response_model=Page[
         ApprovalEscalationResponse
     ],
 )
 def get_pending_escalations(
     db: Session = Depends(get_db),
-    user=Depends(require_roles(["admin", "manager", "auditor"])),
-):
-    return (
-        ApprovalEscalationService.get_pending_escalations(
-            db
+    user=Depends(
+        require_roles(
+            [
+                "organization_admin",
+                "workspace_admin",
+                "manager",
+            ]
         )
-    )
+    ),
+):
+    return paginate(ApprovalEscalationService.get_pending_escalations(db))
 
 
 @router.get(
     "/approval/{approval_id}",
-    response_model=list[
+    response_model=Page[
         ApprovalEscalationResponse
     ],
 )
 def get_escalation_history(
     approval_id: int,
     db: Session = Depends(get_db),
-    user=Depends(require_roles(["admin", "manager", "auditor"])),
+    user=Depends(
+        require_roles(
+            [
+                "organization_admin",
+                "workspace_admin",
+                "manager",
+            ]
+        )
+    ),
 ):
-    return (
+    return paginate(
         ApprovalEscalationService.get_escalation_history(
             db,
             approval_id,
@@ -128,4 +150,3 @@ def cancel_escalation(
             escalation_id,
         )
     )
-    

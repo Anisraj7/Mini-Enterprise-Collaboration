@@ -60,7 +60,11 @@ def can_access_document(
     task,
 ):
 
-    if user.role == "admin":
+    if user.role in (
+        "super_admin",
+        "organization_admin",
+        "workspace_admin",
+    ):
         return True
 
     if not task:
@@ -100,7 +104,11 @@ def validate_task_access(
         )
 
     if (
-        user.role != "admin"
+        user.role not in (
+            "super_admin",
+            "organization_admin",
+            "workspace_admin",
+        )
         and task.created_by_id != user.id
         and task.assigned_to_id != user.id
     ):
@@ -303,7 +311,7 @@ def get_task_documents_service(
         task_id,
     )
 
-    result = paginate(query)
+    result = paginate(db, query)
 
     result = jsonable_encoder(result)
 

@@ -1,3 +1,4 @@
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.task import Task
@@ -10,8 +11,8 @@ def get_task_by_id(
 ):
 
     return (
-        db.query(Task)
-        .filter(Task.id == task_id)
+        db.execute(select(Task).where(Task.id == task_id))
+        .scalars()
         .first()
     )
 
@@ -21,17 +22,17 @@ def active_workspace_users_query(
     user,
 ):
 
-    query = db.query(User.id).filter(
+    query = select(User.id).where(
         User.is_active.is_(True)
     )
 
     if user.organization_id:
-        query = query.filter(
+        query = query.where(
             User.organization_id
             == user.organization_id
         )
 
-    return query.all()
+    return db.execute(query).all()
 
 
 def commit_refresh(

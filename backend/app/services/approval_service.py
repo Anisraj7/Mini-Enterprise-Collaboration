@@ -1,6 +1,7 @@
 from fastapi import HTTPException, status
 from fastapi.encoders import jsonable_encoder
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from fastapi_pagination.ext.sqlalchemy import paginate
@@ -15,6 +16,7 @@ from app.models.approval import (
     Approval,
     ApprovalHistory,
 )
+
 from app.models.user import User
 
 from app.schemas.approval import (
@@ -25,7 +27,10 @@ from app.schemas.approval import (
 from app.services.notification_service import (
     create_notification,
 )
-from app.services.sla_tracking_service import SLATrackingService
+
+from app.services.sla_tracking_service import (
+    SLATrackingService,
+)
 
 from app.repository.approval_repository import (
     create_approval_repository,
@@ -63,22 +68,33 @@ def create_approval_service(
             approval.id,
             "Medium",
         )
-        db.refresh(approval)
+
+        db.refresh(
+            approval,
+        )
+
     except HTTPException:
         pass
 
     approvers = (
-        db.query(User)
-        .filter(
+        db.execute(select(User).where(
             User.organization_id == user.organization_id,
-            User.role.in_(["manager", "admin"]),
+            User.role.in_(
+                [
+                    "organization_admin",
+                    "workspace_admin",
+                    "manager",
+                ]
+            ),
             User.id != user.id,
             User.is_active.is_(True),
-        )
+        ))
+        .scalars()
         .all()
     )
 
     for approver in approvers:
+
         create_notification(
             db,
             approver.id,
@@ -107,7 +123,9 @@ def get_approvals_service(
         f"role:{user.role}"
     )
 
-    cached = cache_get(cache_key)
+    cached = cache_get(
+        cache_key,
+    )
 
     if cached:
         return cached
@@ -117,9 +135,11 @@ def get_approvals_service(
         user,
     )
 
-    result = paginate(query)
+    result = paginate(db, query)
 
-    result = jsonable_encoder(result)
+    result = jsonable_encoder(
+        result,
+    )
 
     cache_set(
         cache_key,
@@ -153,69 +173,64 @@ def take_action_service(
             detail="Approval not found",
         )
 
-    if approval.status in {"approved", "rejected"}:
+    if approval.status in {
+        "approved",
+        "rejected",
+    }:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Approval is already closed",
         )
 
-    # =============================================================
-    # Determine whether the user can take this action.
-    # =============================================================
-    # Base eligibility (existing behavior)
-    can_act = user.role == "admin" or (
-        user.role == "manager" and approval.current_level == "manager"
+    can_act = (
+        user.role in (
+            "super_admin",
+            "organization_admin",
+            "workspace_admin",
+        )
+        or (
+            user.role == "manager"
+            and approval.current_level == "manager"
+        )
     )
 
-    # If delegation is active, allow delegatees to act in place of the
-    # delegator's eligibility.
-    #
-    # Delegation model: delegator_id -> delegatee_id with a time window.
-    # We don't have explicit mapping of approval approver user, but current
-    # implementation gates by role+level. Therefore, delegation authorizes
-    # delegatees whenever the delegator would be eligible.
     if not can_act:
+
         try:
             from app.repository.approval_delegation_repository import (
                 ApprovalDelegationRepository,
             )
 
             active_delegations = (
-                ApprovalDelegationRepository.get_active(db)
+                ApprovalDelegationRepository.get_active(
+                    db,
+                )
             )
 
             delegatee_id = user.id
 
-            # If delegatee is in any active delegation where the delegator
-            # would normally be allowed to act, then can_act becomes True.
-            for d in active_delegations:
-                if d.delegatee_id != delegatee_id:
+            for delegation in active_delegations:
+
+                if delegation.delegatee_id != delegatee_id:
                     continue
 
-                delegator = d.delegator_id
-
-                # delegator eligibility matches current role/level gate
-                delegator_can_act = (
-                    user.role == "admin"  # fallback; not enough info
-                )
-                # Since we only have the current user's role here, infer
-                # delegator eligibility from the current approver level.
-                # The system expects managers to act at manager level.
-                delegator_can_act = approval.current_level == "manager"
-
-                if delegator_can_act:
+                if (
+                    approval.current_level
+                    == "manager"
+                ):
                     can_act = True
                     break
+
         except Exception:
-            # If delegation lookup fails, keep can_act as previously computed.
             pass
 
-    # Escalation override: when escalated, the only eligible user is
-    # approval.current_escalation_to.
     if approval.is_escalated:
-        if approval.current_escalation_to is None or user.id != approval.current_escalation_to:
-            can_act = False
 
+        if (
+            approval.current_escalation_to is None
+            or user.id != approval.current_escalation_to
+        ):
+            can_act = False
 
     if not can_act:
         raise HTTPException(
@@ -223,8 +238,10 @@ def take_action_service(
             detail="Not allowed",
         )
 
-
-    if payload.action == "reject" and not (payload.comment or "").strip():
+    if (
+        payload.action == "reject"
+        and not (payload.comment or "").strip()
+    ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Comment required for rejection",
@@ -235,14 +252,38 @@ def take_action_service(
         "reject": "rejected",
         "hold": "hold",
     }
-    approval.status = status_by_action[payload.action]
 
-    if approval.status in {"approved", "rejected"}:
+    approval.status = status_by_action[
+        payload.action
+    ]
+
+    if approval.status in {
+        "approved",
+        "rejected",
+    }:
         try:
-            tracking = SLATrackingService.get_sla_record(db, "Approval", approval.id)
-            if tracking and not tracking.completed_time:
-                SLATrackingService.complete_sla(db, tracking.id)
-                db.refresh(approval)
+
+            tracking = (
+                SLATrackingService.get_sla_record(
+                    db,
+                    "Approval",
+                    approval.id,
+                )
+            )
+
+            if (
+                tracking
+                and not tracking.completed_time
+            ):
+                SLATrackingService.complete_sla(
+                    db,
+                    tracking.id,
+                )
+
+                db.refresh(
+                    approval,
+                )
+
         except HTTPException:
             pass
 
@@ -288,7 +329,9 @@ def get_history_service(
         f"approval:{approval_id}"
     )
 
-    cached = cache_get(cache_key)
+    cached = cache_get(
+        cache_key,
+    )
 
     if cached:
         return cached
@@ -310,7 +353,10 @@ def get_history_service(
             detail="Approval not found",
         )
 
-    if user.role == "employee" and approval.requested_by != user.id:
+    if (
+        user.role == "employee"
+        and approval.requested_by != user.id
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions",
@@ -321,9 +367,11 @@ def get_history_service(
         approval_id,
     )
 
-    result = paginate(query)
+    result = paginate(db, query)
 
-    result = jsonable_encoder(result)
+    result = jsonable_encoder(
+        result,
+    )
 
     cache_set(
         cache_key,

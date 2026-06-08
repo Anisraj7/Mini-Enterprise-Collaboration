@@ -1,4 +1,3 @@
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from fastapi.encoders import jsonable_encoder
@@ -39,9 +38,10 @@ def summary_service(
         user,
     )
 
-    total_tasks = query.count()
+    tasks = db.execute(query).scalars().all()
 
     grouped = grouped_task_status_query(
+        db,
         query
     )
 
@@ -57,15 +57,13 @@ def summary_service(
         }
     )
 
-    approval_count = approval_query(
+    approval_count = len(db.execute(approval_query(
         db,
         user,
-    ).count()
-
-    tasks = query.all()
+    )).scalars().all())
 
     result = {
-        "total_tasks": total_tasks,
+        "total_tasks": len(tasks),
         "tasks_by_status": status_counts,
         "status_distribution": status_counts,
         "completed_tasks": status_counts.get("done", 0),
@@ -101,6 +99,7 @@ def task_distribution_service(
     )
 
     data = grouped_task_status_query(
+        db,
         query
     )
 
@@ -181,13 +180,12 @@ def ai_summary_service(
     if cached:
         return cached
 
-    tasks = (
+    tasks = db.execute(
         visible_tasks_query(
             db,
             user,
         )
-        .all()
-    )
+    ).scalars().all()
 
     result = generate_ai_summary(tasks)
 

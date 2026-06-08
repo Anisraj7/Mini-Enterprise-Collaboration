@@ -32,7 +32,6 @@ import { useNavigate } from "react-router-dom";
 import API from "../api/axios";
 import { getPageItems } from "../api/pagination";
 import { getUserWebSocketUrl } from "../api/websocket";
-import Navbar from "../components/Navbar";
 import SLABadge from "../components/SLABadge";
 
 const columns = [
@@ -481,11 +480,12 @@ export default function KanbanBoard() {
     return result;
   }, [tasks, priorityFilter, search]);
 
-  const canDrag = user?.role === "admin" || user?.role === "manager";
+  const canDrag = ["organization_admin", "workspace_admin", "manager"].includes(
+    user?.role,
+  );
 
   return (
     <div className="bg-gray-100 min-h-screen">
-      <Navbar />
 
       <div className="max-w-[1800px] mx-auto p-6">
         {/* HEADER */}

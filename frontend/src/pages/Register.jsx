@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+
 import API from "../api/axios";
 
 function getErrorMessage(error) {
@@ -25,7 +26,7 @@ function getErrorMessage(error) {
     return detail.msg || JSON.stringify(detail);
   }
 
-  return "Unable to register user.";
+  return "Unable to create account.";
 }
 
 export default function Register() {
@@ -42,8 +43,6 @@ export default function Register() {
     name: "",
     email: "",
     password: "",
-    role: "employee",
-    organization_name: "",
   });
 
   const handleChange = (event) => {
@@ -53,15 +52,15 @@ export default function Register() {
     }));
   };
 
-  // Password validations
   const passwordChecks = {
     length: form.password.length >= 6,
-    // uppercase: /[A-Z]/.test(form.password),
-    // lowercase: /[a-z]/.test(form.password),
-    // number: /[0-9]/.test(form.password),
+    number: /[0-9]/.test(form.password),
+    uppercase: /[A-Z]/.test(form.password),
+    lowercase: /[a-z]/.test(form.password),
   };
 
-  const passwordStrength = Object.values(passwordChecks).filter(Boolean).length;
+  const passwordStrength =
+    Object.values(passwordChecks).filter(Boolean).length;
 
   const getStrengthLabel = () => {
     if (passwordStrength <= 1) return "Weak";
@@ -88,21 +87,13 @@ export default function Register() {
       return "Password is required.";
     }
 
-    // if (!passwordChecks.length) {
-    //   return "Password must contain at least 8 characters.";
-    // }
+    if (!passwordChecks.length) {
+      return "Password must contain at least 6 characters.";
+    }
 
-    // if (!passwordChecks.uppercase) {
-    //   return "Password must contain an uppercase letter.";
-    // }
-
-    // if (!passwordChecks.lowercase) {
-    //   return "Password must contain a lowercase letter.";
-    // }
-
-    // if (!passwordChecks.number) {
-    //   return "Password must contain a number.";
-    // }
+    if (!passwordChecks.number) {
+      return "Password must contain at least one number.";
+    }
 
     return null;
   };
@@ -122,21 +113,26 @@ export default function Register() {
     try {
       setLoading(true);
 
-      const payload = {
-        ...form,
-        organization_name:
-          form.organization_name.trim() || undefined,
-      };
+      await API.post(
+        "/auth/register",
+        {
+          name: form.name,
+          email: form.email,
+          password: form.password,
+        }
+      );
 
-      await API.post("/auth/register", payload);
-
-      setSuccess("User registered successfully.");
+      setSuccess(
+        "Account created successfully."
+      );
 
       setTimeout(() => {
         navigate("/");
       }, 1200);
     } catch (err) {
-      setError(getErrorMessage(err));
+      setError(
+        getErrorMessage(err)
+      );
     } finally {
       setLoading(false);
     }
@@ -144,41 +140,34 @@ export default function Register() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-white to-emerald-100 flex justify-center items-center px-4 py-10">
-      
       <div className="w-full max-w-md">
-        
-        {/* Card */}
         <div className="bg-white shadow-2xl rounded-3xl overflow-hidden">
-          
-          {/* Header */}
           <div className="bg-gradient-to-r from-indigo-600 to-emerald-500 px-8 py-7 text-white">
             <h1 className="text-3xl font-bold">
               Create Account
             </h1>
 
             <p className="text-sm text-indigo-100 mt-2">
-              Register new users and manage organization access.
+              Create your account and get started.
             </p>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="p-8">
-            
-            {/* Error */}
+          <form
+            onSubmit={handleSubmit}
+            className="p-8"
+          >
             {error && (
               <div className="bg-red-100 border border-red-300 text-red-700 px-4 py-3 rounded-xl mb-5 text-sm">
                 {error}
               </div>
             )}
 
-            {/* Success */}
             {success && (
               <div className="bg-green-100 border border-green-300 text-green-700 px-4 py-3 rounded-xl mb-5 text-sm">
                 {success}
               </div>
             )}
 
-            {/* Name */}
             <div className="mb-5">
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Full Name
@@ -194,7 +183,6 @@ export default function Register() {
               />
             </div>
 
-            {/* Email */}
             <div className="mb-5">
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Email Address
@@ -210,7 +198,6 @@ export default function Register() {
               />
             </div>
 
-            {/* Password */}
             <div className="mb-5">
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Password
@@ -219,7 +206,11 @@ export default function Register() {
               <div className="relative">
                 <input
                   name="password"
-                  type={showPassword ? "text" : "password"}
+                  type={
+                    showPassword
+                      ? "text"
+                      : "password"
+                  }
                   placeholder="Create strong password"
                   value={form.password}
                   onChange={handleChange}
@@ -229,18 +220,20 @@ export default function Register() {
                 <button
                   type="button"
                   onClick={() =>
-                    setShowPassword(!showPassword)
+                    setShowPassword(
+                      !showPassword
+                    )
                   }
                   className="absolute right-4 top-3 text-sm text-indigo-600 font-medium"
                 >
-                  {showPassword ? "Hide" : "Show"}
+                  {showPassword
+                    ? "Hide"
+                    : "Show"}
                 </button>
               </div>
 
-              {/* Password Strength */}
               {form.password && (
                 <div className="mt-4">
-                  
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-medium text-gray-600">
                       Password Strength
@@ -259,101 +252,27 @@ export default function Register() {
                       }}
                     />
                   </div>
-
-                  <div className="mt-3 space-y-1 text-xs">
-                    <p
-                      className={
-                        passwordChecks.length
-                          ? "text-green-600"
-                          : "text-gray-500"
-                      }
-                    >
-                      ✓ Minimum 8 characters
-                    </p>
-
-                    <p
-                      className={
-                        passwordChecks.uppercase
-                          ? "text-green-600"
-                          : "text-gray-500"
-                      }
-                    >
-                      ✓ One uppercase letter
-                    </p>
-
-                    <p
-                      className={
-                        passwordChecks.lowercase
-                          ? "text-green-600"
-                          : "text-gray-500"
-                      }
-                    >
-                      ✓ One lowercase letter
-                    </p>
-
-                    <p
-                      className={
-                        passwordChecks.number
-                          ? "text-green-600"
-                          : "text-gray-500"
-                      }
-                    >
-                      ✓ One number
-                    </p>
-                  </div>
                 </div>
               )}
             </div>
 
-            {/* Role */}
-            <div className="mb-5">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                User Role
-              </label>
-
-              <select
-                name="role"
-                value={form.role}
-                onChange={handleChange}
-                className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-              >
-                <option value="employee">👨‍💻 Employee</option>
-                <option value="manager">📋 Manager</option>
-                <option value="admin">🛡️ Admin</option>
-              </select>
-            </div>
-
-            {/* Organization */}
-            <div className="mb-6">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Organization Name
-              </label>
-
-              <input
-                name="organization_name"
-                type="text"
-                placeholder="Enter organization name"
-                value={form.organization_name}
-                onChange={handleChange}
-                className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-              />
-            </div>
-
-            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
               className="w-full bg-gradient-to-r from-indigo-600 to-emerald-500 hover:opacity-90 text-white font-semibold py-3 rounded-xl transition disabled:opacity-70"
             >
-              {loading ? "Creating Account..." : "Create Account"}
+              {loading
+                ? "Creating Account..."
+                : "Create Account"}
             </button>
 
-            {/* Footer */}
             <p className="text-center text-sm text-gray-500 mt-6">
               Already have an account?{" "}
               <button
                 type="button"
-                onClick={() => navigate("/")}
+                onClick={() =>
+                  navigate("/")
+                }
                 className="text-indigo-600 font-semibold hover:underline"
               >
                 Login

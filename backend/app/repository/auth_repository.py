@@ -1,3 +1,4 @@
+from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.user import User
@@ -12,8 +13,8 @@ def get_user_by_email(
 ):
 
     return (
-        db.query(User)
-        .filter(User.email == email)
+        db.execute(select(User).where(User.email == email))
+        .scalars()
         .first()
     )
 
@@ -24,8 +25,8 @@ def get_user_by_id(
 ):
 
     return (
-        db.query(User)
-        .filter(User.id == user_id)
+        db.execute(select(User).where(User.id == user_id))
+        .scalars()
         .first()
     )
 
@@ -36,9 +37,12 @@ def get_user_with_organization(
 ):
 
     return (
-        db.query(User)
+        db.execute(
+            select(User)
         .options(joinedload(User.organization))
-        .filter(User.id == user_id)
+            .where(User.id == user_id)
+        )
+        .scalars()
         .first()
     )
 
@@ -49,8 +53,10 @@ def get_organization_by_name(
 ):
 
     return (
-        db.query(Organization)
-        .filter(Organization.name == organization_name)
+        db.execute(
+            select(Organization).where(Organization.name == organization_name)
+        )
+        .scalars()
         .first()
     )
 
@@ -61,8 +67,8 @@ def get_refresh_token(
 ):
 
     return (
-        db.query(RefreshToken)
-        .filter(RefreshToken.token == token)
+        db.execute(select(RefreshToken).where(RefreshToken.token == token))
+        .scalars()
         .first()
     )
 
@@ -73,8 +79,10 @@ def get_password_reset_token(
 ):
 
     return (
-        db.query(PasswordResetToken)
-        .filter(PasswordResetToken.token == token)
+        db.execute(
+            select(PasswordResetToken).where(PasswordResetToken.token == token)
+        )
+        .scalars()
         .first()
     )
 

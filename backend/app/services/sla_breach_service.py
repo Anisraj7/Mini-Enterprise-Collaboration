@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.repository.sla_tracking_repository import (
@@ -44,14 +45,18 @@ class SLABreachService:
             breached_records.append(updated_sla)
 
             if sla.module_name.lower() == "task":
-                task = db.query(Task).filter(Task.id == sla.record_id).first()
+                task = db.execute(
+                    select(Task).where(Task.id == sla.record_id)
+                ).scalars().first()
                 if task:
                     task.sla_status = "BREACHED"
                     task.is_sla_breached = True
                     db.commit()
 
             if sla.module_name.lower() == "approval":
-                approval = db.query(Approval).filter(Approval.id == sla.record_id).first()
+                approval = db.execute(
+                    select(Approval).where(Approval.id == sla.record_id)
+                ).scalars().first()
                 if approval:
                     approval.sla_status = "BREACHED"
                     db.commit()

@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 
 from fastapi import HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import (
@@ -167,11 +168,11 @@ def verify_payment(
     # PREVENT DUPLICATE PAYMENTS
 
     existing_payment = (
-        db.query(Subscription)
-        .filter(
+        db.execute(select(Subscription).where(
             Subscription.razorpay_payment_id
             == payload.razorpay_payment_id
-        )
+        ))
+        .scalars()
         .first()
     )
 
@@ -185,11 +186,11 @@ def verify_payment(
     # GET EXISTING SUBSCRIPTION
 
     subscription = (
-        db.query(Subscription)
-        .filter(
+        db.execute(select(Subscription).where(
             Subscription.organization_id
             == user.organization_id
-        )
+        ))
+        .scalars()
         .first()
     )
 
@@ -229,21 +230,13 @@ def verify_payment(
 
     # STORE PAYMENT DETAILS
 
-    if hasattr(
-        subscription,
-        "razorpay_order_id",
-    ):
-        subscription.razorpay_order_id = (
-            payload.razorpay_order_id
-        )
+    subscription.razorpay_order_id = (
+    payload.razorpay_order_id
+    )
 
-    if hasattr(
-        subscription,
-        "razorpay_payment_id",
-    ):
-        subscription.razorpay_payment_id = (
-            payload.razorpay_payment_id
-        )
+    subscription.razorpay_payment_id = (
+        payload.razorpay_payment_id
+    )
 
     db.commit()
 
@@ -288,11 +281,11 @@ def get_current_subscription(
         )
 
     subscription = (
-        db.query(Subscription)
-        .filter(
+        db.execute(select(Subscription).where(
             Subscription.organization_id
             == user.organization_id
-        )
+        ))
+        .scalars()
         .first()
     )
 

@@ -1,3 +1,4 @@
+from sqlalchemy import select
 from sqlalchemy.orm import (
     Session,
     joinedload,
@@ -11,10 +12,10 @@ def activity_logs_query(
     current_user,
 ):
 
-    query = db.query(ActivityLog)
+    query = select(ActivityLog)
 
     if current_user.organization_id:
-        query = query.filter(
+        query = query.where(
             ActivityLog.organization_id
             == current_user.organization_id
         )

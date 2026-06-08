@@ -1,3 +1,4 @@
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.refresh_token import RefreshToken
@@ -10,8 +11,8 @@ def get_user_by_email(
 ):
 
     return (
-        db.query(User)
-        .filter(User.email == email)
+        db.execute(select(User).where(User.email == email))
+        .scalars()
         .first()
     )
 

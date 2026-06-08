@@ -41,7 +41,7 @@ def get_activity_logs_service(
         ActivityLog.created_at.desc()
     )
 
-    result = paginate(query)
+    result = paginate(db, query)
 
     result = jsonable_encoder(result)
 

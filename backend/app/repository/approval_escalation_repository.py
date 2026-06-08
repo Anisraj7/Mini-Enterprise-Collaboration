@@ -1,3 +1,4 @@
+from sqlalchemy import select
 from sqlalchemy.orm import (
     Session,
     joinedload,
@@ -40,7 +41,7 @@ class ApprovalEscalationRepository:
         escalation_id: int,
     ):
         return (
-            db.query(ApprovalEscalation)
+            db.execute(select(ApprovalEscalation)
             .options(
                 joinedload(
                     ApprovalEscalation.approval
@@ -52,10 +53,12 @@ class ApprovalEscalationRepository:
                     ApprovalEscalation.escalated_to_user
                 ),
             )
-            .filter(
+            .where(
                 ApprovalEscalation.id
                 == escalation_id
             )
+            )
+            .scalars()
             .first()
         )
 
@@ -64,7 +67,7 @@ class ApprovalEscalationRepository:
         db: Session,
     ):
         return (
-            db.query(ApprovalEscalation)
+            db.execute(select(ApprovalEscalation)
             .options(
                 joinedload(
                     ApprovalEscalation.approval
@@ -79,6 +82,8 @@ class ApprovalEscalationRepository:
             .order_by(
                 ApprovalEscalation.id.desc()
             )
+            )
+            .scalars()
             .all()
         )
 
@@ -87,7 +92,7 @@ class ApprovalEscalationRepository:
         db: Session,
     ):
         return (
-            db.query(ApprovalEscalation)
+            db.execute(select(ApprovalEscalation)
             .options(
                 joinedload(
                     ApprovalEscalation.approval
@@ -99,13 +104,15 @@ class ApprovalEscalationRepository:
                     ApprovalEscalation.escalated_to_user
                 ),
             )
-            .filter(
+            .where(
                 ApprovalEscalation.status
                 == "PENDING"
             )
             .order_by(
                 ApprovalEscalation.id.desc()
             )
+            )
+            .scalars()
             .all()
         )
 
@@ -115,7 +122,7 @@ class ApprovalEscalationRepository:
         approval_id: int,
     ):
         return (
-            db.query(ApprovalEscalation)
+            db.execute(select(ApprovalEscalation)
             .options(
                 joinedload(
                     ApprovalEscalation.approval
@@ -127,13 +134,15 @@ class ApprovalEscalationRepository:
                     ApprovalEscalation.escalated_to_user
                 ),
             )
-            .filter(
+            .where(
                 ApprovalEscalation.approval_id
                 == approval_id
             )
             .order_by(
                 ApprovalEscalation.id.desc()
             )
+            )
+            .scalars()
             .all()
         )
 
@@ -143,7 +152,7 @@ class ApprovalEscalationRepository:
         approval_id: int,
     ):
         return (
-            db.query(ApprovalEscalation)
+            db.execute(select(ApprovalEscalation)
             .options(
                 joinedload(
                     ApprovalEscalation.approval
@@ -155,12 +164,14 @@ class ApprovalEscalationRepository:
                     ApprovalEscalation.escalated_to_user
                 ),
             )
-            .filter(
+            .where(
                 ApprovalEscalation.approval_id
                 == approval_id,
                 ApprovalEscalation.status
                 == "PENDING",
             )
+            )
+            .scalars()
             .first()
         )
 
@@ -170,7 +181,7 @@ class ApprovalEscalationRepository:
         approval_id: int,
     ):
         return (
-            db.query(ApprovalEscalation)
+            db.execute(select(ApprovalEscalation)
             .options(
                 joinedload(
                     ApprovalEscalation.approval
@@ -182,12 +193,14 @@ class ApprovalEscalationRepository:
                     ApprovalEscalation.escalated_to_user
                 ),
             )
-            .filter(
+            .where(
                 ApprovalEscalation.approval_id
                 == approval_id
             )
             .order_by(
                 ApprovalEscalation.id.desc()
             )
+            )
+            .scalars()
             .first()
         )

@@ -1,13 +1,15 @@
+from typing import Any
 from datetime import datetime
 
 from sqlalchemy import (
     Boolean,
-    Column,
     DateTime,
     ForeignKey,
     Integer,
     Text,
 )
+
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.database import Base
 
@@ -17,50 +19,50 @@ class ApprovalDelegation(Base):
         "approval_delegations"
     )
 
-    id = Column(
+    id: Mapped[Any] = mapped_column(
         Integer,
         primary_key=True,
         index=True,
     )
 
-    delegator_id = Column(
+    delegator_id: Mapped[Any] = mapped_column(
         Integer,
         ForeignKey("users.id"),
         nullable=False,
         index=True,
     )
 
-    delegatee_id = Column(
+    delegatee_id: Mapped[Any] = mapped_column(
         Integer,
         ForeignKey("users.id"),
         nullable=False,
         index=True,
     )
 
-    start_date = Column(
+    start_date: Mapped[Any] = mapped_column(
         DateTime,
         nullable=False,
         index=True,
     )
 
-    end_date = Column(
+    end_date: Mapped[Any] = mapped_column(
         DateTime,
         nullable=False,
         index=True,
     )
 
-    reason = Column(
+    reason: Mapped[Any] = mapped_column(
         Text,
         nullable=False,
     )
 
-    is_active = Column(
+    is_active: Mapped[Any] = mapped_column(
         Boolean,
         default=True,
         index=True,
     )
 
-    created_at = Column(
+    created_at: Mapped[Any] = mapped_column(
         DateTime,
         default=datetime.utcnow,
     )

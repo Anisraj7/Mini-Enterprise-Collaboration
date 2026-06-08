@@ -2,6 +2,7 @@ import stripe
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import (
@@ -97,8 +98,12 @@ def verify_stripe_payment(session_id: str, user, db: Session):
     # Check for duplicate only if column exists
     try:
         existing_payment = (
-            db.query(Subscription)
-            .filter(Subscription.stripe_session_id == session_id)
+            db.execute(
+                select(Subscription).where(
+                    Subscription.stripe_session_id == session_id
+                )
+            )
+            .scalars()
             .first()
         )
 
@@ -114,8 +119,12 @@ def verify_stripe_payment(session_id: str, user, db: Session):
             raise
 
     subscription = (
-        db.query(Subscription)
-        .filter(Subscription.organization_id == user.organization_id)
+        db.execute(
+            select(Subscription).where(
+                Subscription.organization_id == user.organization_id
+            )
+        )
+        .scalars()
         .first()
     )
 
@@ -135,11 +144,13 @@ def verify_stripe_payment(session_id: str, user, db: Session):
     subscription.end_date = now + timedelta(days=30)
     
     # Try to store Stripe details if columns exist
-    try:
-        subscription.stripe_session_id = session_id
-        subscription.stripe_payment_intent_id = session.payment_intent
-    except Exception:
-        pass
+    subscription.stripe_session_id = (
+    session_id
+    )
+
+    subscription.stripe_payment_intent_id = (
+        session.payment_intent
+    )
 
     db.commit()
     db.refresh(subscription)

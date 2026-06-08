@@ -1,3 +1,4 @@
+from sqlalchemy import select
 from sqlalchemy.orm import (
     Session,
     joinedload,
@@ -13,8 +14,8 @@ def get_task_by_id(
 ):
 
     return (
-        db.query(Task)
-        .filter(Task.id == task_id)
+        db.execute(select(Task).where(Task.id == task_id))
+        .scalars()
         .first()
     )
 
@@ -26,17 +27,17 @@ def comments_query(
 ):
 
     query = (
-        db.query(Comment)
+        select(Comment)
         .options(
             joinedload(Comment.user)
         )
-        .filter(
+        .where(
             Comment.task_id == task_id
         )
     )
 
     if user.role == "employee":
-        query = query.filter(
+        query = query.where(
             Comment.is_internal.is_(False)
         )
 

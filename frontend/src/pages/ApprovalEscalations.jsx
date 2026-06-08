@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import {
   Ban,
@@ -15,15 +15,12 @@ import ConfirmModal from "../components/ConfirmModal";
 import DataTable from "../components/DataTable";
 import ErrorMessage from "../components/ErrorMessage";
 import LoadingSpinner from "../components/LoadingSpinner";
-import Navbar from "../components/Navbar";
 import PageHeader from "../components/PageHeader";
 import StatusBadge from "../components/StatusBadge";
 import UserSelectDropdown from "../components/UserSelectDropdown";
 
 const formatDateTime = (value) =>
-  value
-    ? new Date(value).toLocaleString()
-    : "N/A";
+  value ? new Date(value).toLocaleString() : "N/A";
 
 const initialForm = {
   approval_id: "",
@@ -31,32 +28,18 @@ const initialForm = {
   reason: "",
 };
 
-const actionBtn =
-  "rounded-xl p-2 text-white transition";
+const actionBtn = "rounded-xl p-2 text-white transition";
 
-const StatCard = ({
-  title,
-  value,
-  icon: Icon,
-  color,
-}) => (
+const StatCard = ({ title, value, icon: Icon, color }) => (
   <div className="rounded-2xl border bg-white p-5 shadow-sm">
     <div className="flex items-center justify-between">
       <div>
-        <p className="text-sm text-gray-500">
-          {title}
-        </p>
+        <p className="text-sm text-gray-500">{title}</p>
 
-        <h3
-          className={`mt-1 text-3xl font-bold text-${color}-600`}
-        >
-          {value}
-        </h3>
+        <h3 className={`mt-1 text-3xl font-bold text-${color}-600`}>{value}</h3>
       </div>
 
-      <div
-        className={`rounded-2xl bg-${color}-100 p-3 text-${color}-600`}
-      >
+      <div className={`rounded-2xl bg-${color}-100 p-3 text-${color}-600`}>
         <Icon size={24} />
       </div>
     </div>
@@ -64,52 +47,31 @@ const StatCard = ({
 );
 
 export default function ApprovalEscalations() {
+  const [escalations, setEscalations] = useState([]);
 
-  const [escalations, setEscalations] =
-    useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const [loading, setLoading] =
-    useState(true);
+  const [error, setError] = useState("");
 
-  const [error, setError] =
-    useState("");
+  const [success, setSuccess] = useState("");
 
-  const [success, setSuccess] =
-    useState("");
+  const [modal, setModal] = useState(null);
 
-  const [modal, setModal] =
-    useState(null);
+  const [selected, setSelected] = useState(null);
 
-  const [selected, setSelected] =
-    useState(null);
-
-  const [form, setForm] =
-    useState(initialForm);
+  const [form, setForm] = useState(initialForm);
 
   // =====================================
   // HELPERS
   // =====================================
 
-  const setMessage = (
-    type,
-    message
-  ) => {
+  const setMessage = (type, message) => {
+    setError(type === "error" ? message : "");
 
-    setError(
-      type === "error"
-        ? message
-        : ""
-    );
-
-    setSuccess(
-      type === "success"
-        ? message
-        : ""
-    );
+    setSuccess(type === "success" ? message : "");
   };
 
   const closeModal = () => {
-
     setModal(null);
 
     setSelected(null);
@@ -119,164 +81,102 @@ export default function ApprovalEscalations() {
   // FETCH ESCALATIONS
   // =====================================
 
-  const fetchEscalations =
-    async () => {
+  const fetchEscalations = useCallback(async () => {
+    try {
+      setLoading(true);
 
-      try {
+      const { data } = await API.get("/approval-escalations");
 
-        setLoading(true);
-
-        const { data } =
-          await API.get(
-            "/approval-escalations"
-          );
-
-        setEscalations(
-          data || []
-        );
-
-      } catch (err) {
-
-        setMessage(
-          "error",
-          err.response?.data
-            ?.detail ||
-            "Unable to load approval escalations."
-        );
-
-      } finally {
-
-        setLoading(false);
-      }
-    };
+      setEscalations(Array.isArray(data) ? data : data?.items || []);
+    } catch (err) {
+      setMessage(
+        "error",
+        err.response?.data?.detail || "Unable to load approval escalations.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
+    // Initial API synchronization for this page.
     fetchEscalations();
-  }, []);
+  }, [fetchEscalations]);
 
   // =====================================
   // CREATE ESCALATION
   // =====================================
 
-  const createEscalation =
-    async (event) => {
+  const createEscalation = async (event) => {
+    event.preventDefault();
 
-      event.preventDefault();
+    if (!form.approval_id || !form.escalated_to || !form.reason.trim()) {
+      return setMessage(
+        "error",
+        "Approval, escalation user, and reason are required.",
+      );
+    }
 
-      if (
-        !form.approval_id ||
-        !form.escalated_to ||
-        !form.reason.trim()
-      ) {
+    try {
+      const payload = {
+        approval_id: Number(form.approval_id),
+        escalated_to: Number(form.escalated_to),
+        reason: form.reason.trim(),
+      };
 
-        return setMessage(
-          "error",
-          "Approval, escalation user, and reason are required."
-        );
-      }
+      console.log("Escalation Payload:", payload);
 
-      try {
+      await API.post("/approval-escalations", payload);
 
-        const payload = {
-          approval_id: Number(
-            form.approval_id
-          ),
+      setMessage("success", "Approval escalated successfully.");
 
-          escalated_to:
-            typeof form.escalated_to ===
-            "object"
-              ? form
-                  .escalated_to.id
-              : Number(
-                  form.escalated_to
-                ),
+      setForm(initialForm);
 
-          reason:
-            form.reason.trim(),
-        };
+      closeModal();
 
-        await API.post(
-          "/approval-escalations",
-          payload
-        );
+      fetchEscalations();
+    } catch (err) {
+      console.log("Full Error:", err.response?.data);
 
-        setMessage(
-          "success",
-          "Approval escalated successfully."
-        );
-
-        setForm(initialForm);
-
-        closeModal();
-
-        fetchEscalations();
-
-      } catch (err) {
-
-        setMessage(
-          "error",
-          err.response?.data
-            ?.detail ||
-            "Unable to create escalation."
-        );
-      }
-    };
+      setMessage("error", JSON.stringify(err.response?.data));
+    }
+  };
 
   // =====================================
   // UPDATE ESCALATION
   // =====================================
 
-  const updateEscalation =
-    async (action) => {
+  const updateEscalation = async (action) => {
+    try {
+      await API.put(`/approval-escalations/${selected.id}/${action}`);
 
-      try {
+      setMessage("success", `Escalation ${action}d successfully.`);
 
-        await API.put(
-          `/approval-escalations/${selected.id}/${action}`
-        );
+      closeModal();
 
-        setMessage(
-          "success",
-          `Escalation ${action}d successfully.`
-        );
-
-        closeModal();
-
-        fetchEscalations();
-
-      } catch (err) {
-
-        setMessage(
-          "error",
-          err.response?.data
-            ?.detail ||
-            `Unable to ${action} escalation.`
-        );
-      }
-    };
+      fetchEscalations();
+    } catch (err) {
+      setMessage(
+        "error",
+        err.response?.data?.detail || `Unable to ${action} escalation.`,
+      );
+    }
+  };
 
   // =====================================
   // STATS
   // =====================================
 
+  const escalationRows = Array.isArray(escalations) ? escalations : [];
+
   const stats = {
-    PENDING:
-      escalations.filter(
-        ({ status }) =>
-          status === "PENDING"
-      ).length,
+    PENDING: escalationRows.filter(({ status }) => status === "PENDING").length,
 
-    RESOLVED:
-      escalations.filter(
-        ({ status }) =>
-          status === "RESOLVED"
-      ).length,
+    RESOLVED: escalationRows.filter(({ status }) => status === "RESOLVED")
+      .length,
 
-    CANCELLED:
-      escalations.filter(
-        ({ status }) =>
-          status === "CANCELLED"
-      ).length,
+    CANCELLED: escalationRows.filter(({ status }) => status === "CANCELLED")
+      .length,
   };
 
   // =====================================
@@ -284,30 +184,18 @@ export default function ApprovalEscalations() {
   // =====================================
 
   const columns = [
-
     {
       key: "approval",
       header: "Approval",
 
       render: (row) => (
-
         <div>
-
           <p className="font-semibold text-gray-800">
-
-            {row.approval?.title ||
-              "Untitled Approval"}
-
+            {row.approval?.title || "Untitled Approval"}
           </p>
 
-          <p className="text-xs text-gray-500">
-
-            #{row.approval_id}
-
-          </p>
-
+          <p className="text-xs text-gray-500">#{row.approval_id}</p>
         </div>
-
       ),
     },
 
@@ -316,21 +204,11 @@ export default function ApprovalEscalations() {
       header: "Escalated From",
 
       render: (row) => (
-
         <p className="font-medium text-gray-800">
-
-          {row
-            .escalated_from_user
-            ?.full_name ||
-
-            row
-              .escalated_from_user
-              ?.name ||
-
+          {row.escalated_from_user?.full_name ||
+            row.escalated_from_user?.name ||
             `User #${row.escalated_from}`}
-
         </p>
-
       ),
     },
 
@@ -339,21 +217,11 @@ export default function ApprovalEscalations() {
       header: "Escalated To",
 
       render: (row) => (
-
         <p className="font-medium text-gray-800">
-
-          {row
-            .escalated_to_user
-            ?.full_name ||
-
-            row
-              .escalated_to_user
-              ?.name ||
-
+          {row.escalated_to_user?.full_name ||
+            row.escalated_to_user?.name ||
             `User #${row.escalated_to}`}
-
         </p>
-
       ),
     },
 
@@ -362,13 +230,7 @@ export default function ApprovalEscalations() {
       header: "Reason",
 
       render: (row) => (
-
-        <div className="max-w-[250px] break-words">
-
-          {row.reason}
-
-        </div>
-
+        <div className="max-w-[250px] break-words">{row.reason}</div>
       ),
     },
 
@@ -377,13 +239,9 @@ export default function ApprovalEscalations() {
       header: "Level",
 
       render: (row) => (
-
         <div className="font-semibold text-orange-600">
-
           L{row.escalation_level}
-
         </div>
-
       ),
     },
 
@@ -391,21 +249,14 @@ export default function ApprovalEscalations() {
       key: "status",
       header: "Status",
 
-      render: (row) => (
-        <StatusBadge
-          status={row.status}
-        />
-      ),
+      render: (row) => <StatusBadge status={row.status} />,
     },
 
     {
       key: "created_at",
       header: "Escalated At",
 
-      render: (row) =>
-        formatDateTime(
-          row.created_at
-        ),
+      render: (row) => formatDateTime(row.created_at),
     },
 
     {
@@ -413,80 +264,41 @@ export default function ApprovalEscalations() {
       header: "Actions",
 
       render: (row) =>
-        row.status ===
-        "PENDING" ? (
-
+        row.status === "PENDING" ? (
           <div className="flex gap-2">
-
             {[
-              [
-                "resolve",
-                Check,
-                "green",
-              ],
+              ["resolve", Check, "green"],
 
-              [
-                "cancel",
-                Ban,
-                "red",
-              ],
-            ].map(
-              ([
-                type,
-                Icon,
-                color,
-              ]) => (
+              ["cancel", Ban, "red"],
+            ].map(([type, Icon, color]) => (
+              <button
+                key={type}
+                onClick={() => {
+                  setSelected(row);
 
-                <button
-                  key={type}
-                  onClick={() => {
-                    setSelected(
-                      row
-                    );
-
-                    setModal(
-                      type
-                    );
-                  }}
-                  className={`${actionBtn} bg-${color}-600 hover:bg-${color}-700`}
-                >
-                  <Icon size={15} />
-                </button>
-
-              )
-            )}
-
+                  setModal(type);
+                }}
+                className={`${actionBtn} bg-${color}-600 hover:bg-${color}-700`}
+              >
+                <Icon size={15} />
+              </button>
+            ))}
           </div>
-
         ) : (
-
-          <span className="text-sm text-gray-400">
-
-            No Actions
-
-          </span>
-
+          <span className="text-sm text-gray-400">No Actions</span>
         ),
     },
   ];
 
   return (
-
     <div className="min-h-screen bg-gray-100">
-
-      <Navbar />
-
       <main className="mx-auto max-w-7xl p-6">
-
         <PageHeader
           title="Approval Escalations"
           subtitle="Manage delayed approvals and escalation workflow"
           actions={
-
             <button
-              onClick={() =>
-                setModal("create")
-              }
+              onClick={() => setModal("create")}
               className="
                 flex
                 items-center
@@ -501,20 +313,15 @@ export default function ApprovalEscalations() {
                 hover:bg-blue-700
               "
             >
-
               <Plus size={16} />
-
               Escalate Approval
-
             </button>
-
           }
         />
 
         {/* STATS */}
 
         <div className="mb-6 grid gap-4 md:grid-cols-3">
-
           <StatCard
             title="Pending Escalations"
             value={stats.PENDING}
@@ -535,244 +342,160 @@ export default function ApprovalEscalations() {
             icon={ShieldAlert}
             color="red"
           />
-
         </div>
 
         {/* ALERTS */}
 
         {success && (
-
           <div className="mb-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-
             {success}
-
           </div>
-
         )}
 
-        <ErrorMessage
-          message={error}
-        />
+        <ErrorMessage message={error} />
 
         {/* TABLE */}
 
         {loading ? (
-
           <LoadingSpinner />
-
         ) : (
-
           <div className="rounded-2xl border bg-white p-4 shadow-sm">
-
             <DataTable
               columns={columns}
-              rows={escalations}
+              rows={Array.isArray(escalations) ? escalations : []}
               emptyMessage="No escalation records found"
             />
-
           </div>
-
         )}
 
         {/* CREATE MODAL */}
 
         {modal === "create" && (
-
           <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-sm">
-
             <div className="flex min-h-screen items-center justify-center p-4">
-
               <form
-                onSubmit={
-                  createEscalation
-                }
+                onSubmit={createEscalation}
                 className="w-full max-w-xl rounded-3xl bg-white p-6 shadow-2xl"
               >
-
                 <div className="mb-6 flex items-center gap-3">
-
                   <div className="rounded-2xl bg-red-100 p-3 text-red-600">
-
-                    <AlertTriangle
-                      size={22}
-                    />
-
+                    <AlertTriangle size={22} />
                   </div>
 
                   <div>
-
                     <h2 className="text-2xl font-bold text-gray-800">
-
                       Escalate Approval
-
                     </h2>
 
                     <p className="text-sm text-gray-500">
-
                       Escalate workflow to higher authority
-
                     </p>
-
                   </div>
-
                 </div>
 
                 <div className="space-y-5">
-
                   <div>
-
                     <label className="mb-2 block text-sm font-medium text-gray-700">
-
                       Approval ID
-
                     </label>
 
                     <input
                       type="number"
                       min="1"
                       placeholder="Enter approval ID"
-                      value={
-                        form.approval_id
-                      }
-                      onChange={(
-                        e
-                      ) =>
+                      value={form.approval_id}
+                      onChange={(e) =>
                         setForm({
                           ...form,
-                          approval_id:
-                            e.target
-                              .value,
+                          approval_id: e.target.value,
                         })
                       }
                       className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-blue-500"
                     />
-
                   </div>
 
                   <div>
-
                     <label className="mb-2 block text-sm font-medium text-gray-700">
-
                       Escalate To
-
                     </label>
 
                     <UserSelectDropdown
-                      value={
-                        form.escalated_to ||
-                        ""
-                      }
-                      onChange={(
-                        value
-                      ) =>
+                      value={form.escalated_to || ""}
+                      onChange={(value) =>
                         setForm({
                           ...form,
-                          escalated_to:
-                            value,
+                          escalated_to: value,
                         })
                       }
+                      roles={[
+                        "organization_admin",
+                        "workspace_admin",
+                        "manager",
+                      ]}
                       className="w-full"
                     />
-
                   </div>
 
                   <div>
-
                     <label className="mb-2 block text-sm font-medium text-gray-700">
-
                       Escalation Reason
-
                     </label>
 
                     <textarea
                       placeholder="Enter escalation reason"
-                      value={
-                        form.reason
-                      }
-                      onChange={(
-                        e
-                      ) =>
+                      value={form.reason}
+                      onChange={(e) =>
                         setForm({
                           ...form,
-                          reason:
-                            e.target
-                              .value,
+                          reason: e.target.value,
                         })
                       }
                       className="min-h-[140px] w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-blue-500"
                     />
-
                   </div>
-
                 </div>
 
                 <div className="mt-6 flex justify-end gap-3">
-
                   <button
                     type="button"
-                    onClick={
-                      closeModal
-                    }
+                    onClick={closeModal}
                     className="rounded-xl border border-gray-300 px-5 py-2.5 text-sm font-medium hover:bg-gray-100"
                   >
-
                     Cancel
-
                   </button>
 
                   <button
                     type="submit"
                     className="rounded-xl bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700"
                   >
-
                     Escalate Approval
-
                   </button>
-
                 </div>
-
               </form>
-
             </div>
-
           </div>
-
         )}
 
         {/* RESOLVE */}
 
         <ConfirmModal
-          isOpen={
-            modal === "resolve"
-          }
+          isOpen={modal === "resolve"}
           title="Resolve Escalation"
           message="Are you sure you want to resolve this escalation?"
-          onConfirm={() =>
-            updateEscalation(
-              "resolve"
-            )
-          }
+          onConfirm={() => updateEscalation("resolve")}
           onClose={closeModal}
         />
 
         {/* CANCEL */}
 
         <ConfirmModal
-          isOpen={
-            modal === "cancel"
-          }
+          isOpen={modal === "cancel"}
           title="Cancel Escalation"
           message="Are you sure you want to cancel this escalation?"
-          onConfirm={() =>
-            updateEscalation(
-              "cancel"
-            )
-          }
+          onConfirm={() => updateEscalation("cancel")}
           onClose={closeModal}
         />
-
       </main>
-
     </div>
   );
 }

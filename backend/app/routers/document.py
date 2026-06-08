@@ -10,7 +10,6 @@ from fastapi.responses import FileResponse
 
 from typing import Optional
 
-
 from sqlalchemy.orm import Session
 
 from fastapi_pagination import Page
@@ -49,11 +48,14 @@ async def upload(
     task_id: Optional[int] = None,
     db: Session = Depends(get_db),
     user=Depends(
-        require_roles([
-            "admin",
-            "manager",
-            "employee",
-        ])
+        require_roles(
+            [
+                "organization_admin",
+                "workspace_admin",
+                "manager",
+                "employee",
+            ]
+        )
     ),
 ):
     return await upload_document_service(
@@ -90,7 +92,6 @@ def download(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
-
     doc = get_document_service(
         db,
         document_id,

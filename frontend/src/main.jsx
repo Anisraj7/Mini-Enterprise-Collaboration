@@ -5,6 +5,10 @@ import App from "./App";
 
 import { Toaster } from "react-hot-toast";
 
+import {
+  AuthProvider,
+} from "./components/AuthContext";
+
 ReactDOM.createRoot(
   document.getElementById("root")
 ).render(
@@ -12,8 +16,11 @@ ReactDOM.createRoot(
 
     <Toaster position="top-right" />
 
-    <App />
+    <AuthProvider>
+      <App />
+    </AuthProvider>
 
   </React.StrictMode>
 );
+
 

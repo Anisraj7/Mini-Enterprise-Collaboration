@@ -1,3 +1,4 @@
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.document import Document
@@ -10,8 +11,8 @@ def get_task_by_id(
 ):
 
     return (
-        db.query(Task)
-        .filter(Task.id == task_id)
+        db.execute(select(Task).where(Task.id == task_id))
+        .scalars()
         .first()
     )
 
@@ -22,8 +23,8 @@ def get_document_by_id(
 ):
 
     return (
-        db.query(Document)
-        .filter(Document.id == document_id)
+        db.execute(select(Document).where(Document.id == document_id))
+        .scalars()
         .first()
     )
 
@@ -35,12 +36,13 @@ def get_existing_document(
 ):
 
     return (
-        db.query(Document)
-        .filter(
+        db.execute(select(Document).where(
             Document.file_name == file_name,
             Document.task_id == task_id,
         )
         .order_by(Document.version.desc())
+        )
+        .scalars()
         .first()
     )
 
@@ -51,8 +53,8 @@ def documents_query(
 ):
 
     return (
-        db.query(Document)
-        .filter(Document.task_id == task_id)
+        select(Document)
+        .where(Document.task_id == task_id)
         .order_by(Document.created_at.desc())
     )
 

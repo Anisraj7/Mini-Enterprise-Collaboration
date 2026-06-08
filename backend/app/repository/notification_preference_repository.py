@@ -1,3 +1,4 @@
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.notification_preference import (
@@ -37,10 +38,10 @@ class NotificationPreferenceRepository:
         user_id: int,
     ):
         return (
-            db.query(NotificationPreference)
-            .filter(
+            db.execute(select(NotificationPreference).where(
                 NotificationPreference.user_id
                 == user_id
-            )
+            ))
+            .scalars()
             .first()
         )

@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import API from "../api/axios";
 import { getUserWebSocketUrl } from "../api/websocket";
 import { getPageItems } from "../api/pagination";
-import Navbar from "../components/Navbar";
 
 import {
   BarChart,
@@ -157,7 +156,11 @@ export default function Dashboard() {
     }
   };
 
-  const canManageTasks = user?.role === "admin" || user?.role === "manager";
+  const canManageTasks = [
+    "organization_admin",
+    "workspace_admin",
+    "manager",
+  ].includes(user?.role);
 
   const showAssignedToColumn = user?.role !== "employee";
 
@@ -191,8 +194,6 @@ export default function Dashboard() {
 
   return (
     <div className="bg-gray-50 min-h-screen">
-      <Navbar />
-
       <div className="p-6 max-w-7xl mx-auto">
         {/* HEADER */}
         <div className="flex justify-between items-center mb-6">
@@ -208,18 +209,14 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* {canManageTasks && (
-
+          {canManageTasks && (
             <button
-              onClick={() =>
-                navigate("/create-task")
-              }
+              onClick={() => navigate("/create-task")}
               className="bg-gradient-to-r from-indigo-600 to-cyan-600 text-white px-5 py-2 rounded-lg shadow hover:scale-105 transition"
             >
               Create Task
             </button>
-
-          )} */}
+          )}
         </div>
 
         {/* ERROR */}
@@ -337,7 +334,7 @@ export default function Dashboard() {
           </div>
 
           {/* Activity Feed */}
-          <div className="bg-white p-5 rounded-xl shadow">
+          {/* <div className="bg-white p-5 rounded-xl shadow">
             <h2 className="font-semibold text-lg mb-4">Activity Feed</h2>
 
             <div className="space-y-3 max-h-80 overflow-y-auto">
@@ -356,8 +353,8 @@ export default function Dashboard() {
                   </div>
                 ))
               )}
-            </div>
-          </div>
+            </div> */}
+          {/* </div> */}
         </div>
 
         {/* CHARTS */}

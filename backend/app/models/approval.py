@@ -1,6 +1,6 @@
+from typing import Any
 from sqlalchemy import (
     Boolean,
-    Column,
     DateTime,
     ForeignKey,
     Integer,
@@ -8,7 +8,7 @@ from sqlalchemy import (
     Text,
     Index,
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime
 
 from app.db.database import Base
@@ -17,21 +17,21 @@ from app.db.database import Base
 class Approval(Base):
     __tablename__ = "approvals"
 
-    id = Column(Integer, primary_key=True, index=True)
-    title = Column(String, nullable=False)
-    description = Column(Text)
-    requested_by = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    status = Column(String, default="pending", nullable=False, index=True)
-    current_level = Column(String, default="manager", nullable=False, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
-    sla_status = Column(String(50), nullable=True, index=True)
-    sla_due_time = Column(DateTime, nullable=True, index=True)
-    is_escalated = Column(Boolean, default=False, nullable=False, index=True)
-    current_escalation_to = Column(
+    id: Mapped[Any] = mapped_column(Integer, primary_key=True, index=True)
+    title: Mapped[Any] = mapped_column(String, nullable=False)
+    description: Mapped[Any] = mapped_column(Text)
+    requested_by: Mapped[Any] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    status: Mapped[Any] = mapped_column(String, default="pending", nullable=False, index=True)
+    current_level: Mapped[Any] = mapped_column(String, default="manager", nullable=False, index=True)
+    created_at: Mapped[Any] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    sla_status: Mapped[Any] = mapped_column(String(50), nullable=True, index=True)
+    sla_due_time: Mapped[Any] = mapped_column(DateTime, nullable=True, index=True)
+    is_escalated: Mapped[Any] = mapped_column(Boolean, default=False, nullable=False, index=True)
+    current_escalation_to: Mapped[Any] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True, index=True
     )
 
-    organization_id = Column(Integer, ForeignKey("organizations.id"))
+    organization_id: Mapped[Any] = mapped_column(Integer, ForeignKey("organizations.id"))
 
     requester = relationship("User", foreign_keys=[requested_by])
     escalation_user = relationship("User", foreign_keys=[current_escalation_to])
@@ -54,19 +54,19 @@ class Approval(Base):
 class ApprovalHistory(Base):
     __tablename__ = "approval_history"
 
-    id = Column(Integer, primary_key=True, index=True)
-    approval_id = Column(
+    id: Mapped[Any] = mapped_column(Integer, primary_key=True, index=True)
+    approval_id: Mapped[Any] = mapped_column(
         Integer, ForeignKey("approvals.id"), nullable=False, index=True
     )
-    action_by = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    action = Column(String, nullable=False)
-    comment = Column(Text)
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    action_by: Mapped[Any] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    action: Mapped[Any] = mapped_column(String, nullable=False)
+    comment: Mapped[Any] = mapped_column(Text)
+    created_at: Mapped[Any] = mapped_column(DateTime, default=datetime.utcnow, index=True)
 
     approval = relationship("Approval")
     user = relationship("User")
 
-    organization_id = Column(Integer, ForeignKey("organizations.id"))
+    organization_id: Mapped[Any] = mapped_column(Integer, ForeignKey("organizations.id"))
 
     __table_args__ = (
         Index(

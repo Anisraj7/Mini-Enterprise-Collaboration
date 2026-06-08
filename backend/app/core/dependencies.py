@@ -14,6 +14,7 @@ from jose import (
     jwt,
 )
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import (
@@ -84,10 +85,10 @@ def get_current_user(
         )
 
     user = (
-        db.query(User)
-        .filter(
+        db.execute(select(User).where(
             User.id == int(user_id)
-        )
+        ))
+        .scalars()
         .first()
     )
 

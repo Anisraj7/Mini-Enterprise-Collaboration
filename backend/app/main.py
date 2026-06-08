@@ -5,31 +5,47 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-from app.db.database import Base, engine
-from app.db.schema_compat import ensure_phase9_schema
-from app.routers import (
-    activity,
-    approval, auth, comments, dashboard, 
-    kanban, tasks, users, document, audit, notification,
-    websocket, oAuth, payment, sla_tracking, sla_rule, 
-    approval_escalation_router, notification_preference_router,
-    approval_delegation_router,
-)
 from fastapi.staticfiles import StaticFiles
+from fastapi_pagination import add_pagination
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-
 from slowapi.middleware import SlowAPIMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
-from slowapi import _rate_limit_exceeded_handler
-
 from app.core.rate_limit import limiter
-
-from fastapi_pagination import add_pagination
-
+from app.db.database import Base, engine
+from app.db.schema_compat import ensure_phase9_schema
 from app.middleware.audit_middleware import AuditMiddleware
 
+from app.routers import (
+    activity,
+    approval,
+    approval_delegation_router,
+    approval_escalation_router,
+    audit,
+    auth,
+    channel,
+    channel_member,
+    comments,
+    dashboard,
+    document,
+    kanban,
+    notification,
+    notification_preference_router,
+    oAuth,
+    payment,
+    sla_rule,
+    sla_tracking,
+    tasks,
+    tenant,
+    tenant_collab,
+    tenant_collab_usage,
+    tenant_onboarding,
+    users,
+    websocket,
+    workspace,
+    workspace_member,
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -49,6 +65,7 @@ app.state.limiter = limiter
 Base.metadata.create_all(bind=engine)
 ensure_phase9_schema(engine)
 
+# Core Routers
 app.include_router(auth.router)
 app.include_router(tasks.router)
 app.include_router(users.router)
@@ -65,31 +82,91 @@ app.include_router(oAuth.router)
 app.include_router(payment.router)
 app.include_router(sla_tracking.router)
 app.include_router(sla_rule.router)
+
+# Approval Extensions
 app.include_router(approval_escalation_router.router)
 app.include_router(notification_preference_router.router)
 app.include_router(approval_delegation_router.router)
+
+# Middleware
 app.add_middleware(AuditMiddleware)
+
+# Organization Routes
+app.include_router(
+    tenant_onboarding.router,
+    prefix="/organizations",
+    tags=["Organization Onboarding"]
+)
+
+app.include_router(
+    tenant_collab.router,
+    prefix="/organizations",
+    tags=["Organization Collaboration Settings"]
+)
+
+app.include_router(
+    tenant_collab_usage.router,
+    prefix="/organizations",
+    tags=["Organization Usage"]
+)
+
+app.include_router(
+    tenant.router,
+    prefix="/organizations",
+    tags=["Organizations"]
+)
+
+# Workspace Routes
+app.include_router(
+    workspace.router,
+    prefix="/workspaces",
+    tags=["Workspaces"]
+)
+
+app.include_router(
+    workspace_member.router,
+    prefix="/workspaces",
+    tags=["Workspace Members"]
+)
+
+# Channel Routes
+app.include_router(
+    channel.router,
+    prefix="/channels",
+    tags=["Channels"]
+)
+
+app.include_router(
+    channel_member.router,
+    prefix="/channels",
+    tags=["Channel Members"]
+)
 
 add_pagination(app)
 
 uploads_dir = Path(__file__).resolve().parents[2] / "uploads"
 uploads_dir.mkdir(exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
+
+app.mount(
+    "/uploads",
+    StaticFiles(directory=uploads_dir),
+    name="uploads"
+)
 
 @app.middleware("http")
 async def log_requests(request, call_next):
     started_at = time.perf_counter()
     response = await call_next(request)
-    duration_ms = (time.perf_counter() - started_at) * 1000
+
     logger.info(
         "%s %s -> %s %.2fms",
         request.method,
         request.url.path,
         response.status_code,
-        duration_ms,
+        (time.perf_counter() - started_at) * 1000,
     )
-    return response
 
+    return response
 
 allowed_origins = [
     origin.strip()
@@ -102,12 +179,11 @@ allowed_origins = [
 
 app.add_exception_handler(
     RateLimitExceeded,
-    _rate_limit_exceeded_handler
+    _rate_limit_exceeded_handler #type: ignore
 )
+
 app.add_middleware(SlowAPIMiddleware)
 
-# Keep CORS outermost so browser clients still receive CORS headers when
-# auth, rate-limit, or audit middleware returns an error response.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,

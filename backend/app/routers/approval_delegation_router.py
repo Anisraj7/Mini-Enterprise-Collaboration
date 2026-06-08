@@ -3,6 +3,8 @@ from fastapi import (
     Depends,
 )
 
+from fastapi_pagination import Page
+from fastapi_pagination import paginate
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import (
@@ -46,7 +48,7 @@ def create_delegation(
 
 @router.get(
     "/me",
-    response_model=list[
+    response_model=Page[
         ApprovalDelegationOut
     ],
 )
@@ -54,7 +56,7 @@ def get_my_delegations(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
-    return (
+    return paginate(
         ApprovalDelegationService.get_my_delegations(
             db,
             user,
@@ -64,18 +66,14 @@ def get_my_delegations(
 
 @router.get(
     "/active",
-    response_model=list[
+    response_model=Page[
         ApprovalDelegationOut
     ],
 )
 def get_active_delegations(
     db: Session = Depends(get_db),
 ):
-    return (
-        ApprovalDelegationService.get_active_delegations(
-            db
-        )
-    )
+    return paginate(ApprovalDelegationService.get_active_delegations(db))
 
 
 @router.put(

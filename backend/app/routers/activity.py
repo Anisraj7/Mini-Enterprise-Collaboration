@@ -29,7 +29,13 @@ router = APIRouter(
 def get_activity_logs(
     db: Session = Depends(get_db),
     current_user: User = Depends(
-        require_roles(["admin", "manager"])
+        require_roles(
+            [
+                "organization_admin",
+                "workspace_admin",
+                "manager",
+            ]
+        )
     ),
 ):
     return get_activity_logs_service(

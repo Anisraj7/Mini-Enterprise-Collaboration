@@ -5,6 +5,7 @@ from fastapi import (
     status,
 )
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import (
@@ -78,11 +79,11 @@ def create_payment(
         )
 
         subscription = (
-            db.query(Subscription)
-            .filter(
+            db.execute(select(Subscription).where(
                 Subscription.organization_id
                 == user.organization_id
-            )
+            ))
+            .scalars()
             .first()
         )
 
@@ -226,8 +227,12 @@ def activate_plan(
     from datetime import datetime, timedelta, timezone
 
     subscription = (
-        db.query(Subscription)
-        .filter(Subscription.organization_id == user.organization_id)
+        db.execute(
+            select(Subscription).where(
+                Subscription.organization_id == user.organization_id
+            )
+        )
+        .scalars()
         .first()
     )
 

@@ -1,4 +1,4 @@
-from sqlalchemy import func
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.approval import Approval
@@ -12,17 +12,17 @@ def approval_query(
     user,
 ):
 
-    query = db.query(Approval).filter(
+    query = select(Approval).where(
         Approval.status == "pending"
     )
 
     if user.organization_id:
-        query = query.filter(
+        query = query.where(
             Approval.organization_id == user.organization_id
         )
 
     if user.role == "employee":
-        query = query.filter(
+        query = query.where(
             Approval.requested_by == user.id
         )
 
@@ -30,17 +30,16 @@ def approval_query(
 
 
 def grouped_task_status_query(
+    db: Session,
     query,
 ):
 
-    return (
-        query.with_entities(
-            Task.status,
-            func.count(Task.id),
-        )
-        .group_by(Task.status)
-        .all()
-    )
+    grouped = query.with_only_columns(
+        Task.status,
+        func.count(Task.id),
+    ).group_by(Task.status)
+
+    return db.execute(grouped).all()
 
 
 def grouped_approval_status_query(
@@ -48,19 +47,18 @@ def grouped_approval_status_query(
     user,
 ):
 
-    query = db.query(
+    query = select(
         Approval.status,
         func.count(Approval.id),
     )
 
     if user.organization_id:
-        query = query.filter(
+        query = query.where(
             Approval.organization_id == user.organization_id
         )
 
-    return (
+    return db.execute(
         query.group_by(
             Approval.status
         )
-        .all()
-    )
+    ).all()

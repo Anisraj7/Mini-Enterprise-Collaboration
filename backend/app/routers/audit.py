@@ -1,24 +1,22 @@
+from datetime import datetime
+
 from fastapi import (
     APIRouter,
     Depends,
     HTTPException,
-    Query,
 )
-from datetime import datetime
 
+from fastapi_pagination import Page
+from fastapi_pagination.ext.sqlalchemy import paginate
+from sqlalchemy import select
 from sqlalchemy.orm import Session
-
-from fastapi.encoders import (
-    jsonable_encoder,
-)
-
-from app.core.cache import (
-    cache_get,
-    cache_set,
-)
 
 from app.core.dependencies import (
     get_current_user,
+)
+
+from app.core.permissions import (
+    require_auditor_or_admin,
 )
 
 from app.db.database import (
@@ -28,78 +26,43 @@ from app.db.database import (
 from app.models.audit_log import (
     AuditLog,
 )
+from app.schemas.audit_log import AuditLogOut
 
 router = APIRouter(
     prefix="/audit-logs",
     tags=["Audit Logs"],
 )
 
-from app.core.permissions import (
-    require_auditor_or_admin,
-)
-
 
 # =========================================
 # GET AUDIT LOGS
 # =========================================
-@router.get("/")
+@router.get("/", response_model=Page[AuditLogOut])
 def get_logs(
-    page: int = Query(
-        1,
-        ge=1,
-    ),
-    limit: int = Query(
-        10,
-        ge=1,
-        le=100,
-    ),
     module_name: str | None = None,
     action_type: str | None = None,
     user_id: int | None = None,
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
-    
-    require_auditor_or_admin(
-        user
-    )
+    require_auditor_or_admin(user)
 
-    cache_key = (
-        f"audit:list:"
-        f"user:{user.id}:"
-        f"role:{user.role}:"
-        f"page:{page}:"
-        f"limit:{limit}:"
-        f"module:{module_name}:"
-        f"action:{action_type}:"
-        f"user_filter:{user_id}"
-    )
-
-    cached = cache_get(cache_key)
-
-    if cached is not None:
-        return cached
-
-    skip = (page - 1) * limit
-
-    query = db.query(AuditLog)
+    query = select(AuditLog)
 
     # =====================================
     # ORGANIZATION FILTER
     # =====================================
     if user.organization_id:
-
-        query = query.filter(
+        query = query.where(
             AuditLog.organization_id
             == user.organization_id
         )
 
     # =====================================
-    # NON-ADMIN RESTRICTION
+    # NON-ORG-ADMIN RESTRICTION
     # =====================================
-    if user.role != "admin":
-
-        query = query.filter(
+    if user.role != "organization_admin":
+        query = query.where(
             AuditLog.user_id
             == user.id
         )
@@ -108,62 +71,34 @@ def get_logs(
     # OPTIONAL FILTERS
     # =====================================
     if module_name:
-
-        query = query.filter(
+        query = query.where(
             AuditLog.module_name
             == module_name
         )
 
     if action_type:
-
-        query = query.filter(
+        query = query.where(
             AuditLog.action_type
             == action_type
         )
 
-    if user_id and user.role == "admin":
-
-        query = query.filter(
+    if (
+        user_id and
+        user.role == "organization_admin"
+    ):
+        query = query.where(
             AuditLog.user_id
             == user_id
         )
 
-    total = query.count()
-
-    logs = (
-        query
-        .order_by(
-            AuditLog.created_at.desc()
-        )
-        .offset(skip)
-        .limit(limit)
-        .all()
+    return paginate(
+        db,
+        query.order_by(AuditLog.created_at.desc())
     )
 
-    result = {
-        "page": page,
-        "limit": limit,
-        "total": total,
-        "total_pages": (
-            total + limit - 1
-        ) // limit,
-        "data": logs,
-    }
 
-    result = jsonable_encoder(result)
-
-    cache_set(
-        cache_key,
-        result,
-    )
-
-    return result
-
-
-@router.get("")
+@router.get("", response_model=Page[AuditLogOut])
 def get_logs_no_slash(
-    page: int = Query(1, ge=1),
-    limit: int = Query(10, ge=1, le=100),
     module_name: str | None = None,
     action_type: str | None = None,
     user_id: int | None = None,
@@ -171,8 +106,6 @@ def get_logs_no_slash(
     user=Depends(get_current_user),
 ):
     return get_logs(
-        page=page,
-        limit=limit,
         module_name=module_name,
         action_type=action_type,
         user_id=user_id,
@@ -181,7 +114,7 @@ def get_logs_no_slash(
     )
 
 
-@router.get("/date-range")
+@router.get("/date-range", response_model=Page[AuditLogOut])
 def get_logs_by_date_range(
     start_date: datetime,
     end_date: datetime,
@@ -190,21 +123,27 @@ def get_logs_by_date_range(
 ):
     require_auditor_or_admin(user)
 
-    query = db.query(AuditLog).filter(
+    query = select(AuditLog).where(
         AuditLog.created_at >= start_date,
         AuditLog.created_at <= end_date,
     )
 
     if user.organization_id:
-        query = query.filter(AuditLog.organization_id == user.organization_id)
+        query = query.where(
+            AuditLog.organization_id
+            == user.organization_id
+        )
 
-    if user.role != "admin":
-        query = query.filter(AuditLog.user_id == user.id)
+    if user.role != "organization_admin":
+        query = query.where(
+            AuditLog.user_id
+            == user.id
+        )
 
-    return query.order_by(AuditLog.created_at.desc()).all()
+    return paginate(db, query.order_by(AuditLog.created_at.desc()))
 
 
-@router.get("/module/{module_name}")
+@router.get("/module/{module_name}", response_model=Page[AuditLogOut])
 def get_logs_by_module(
     module_name: str,
     db: Session = Depends(get_db),
@@ -212,18 +151,26 @@ def get_logs_by_module(
 ):
     require_auditor_or_admin(user)
 
-    query = db.query(AuditLog).filter(AuditLog.module_name == module_name)
+    query = select(AuditLog).where(
+        AuditLog.module_name == module_name
+    )
 
     if user.organization_id:
-        query = query.filter(AuditLog.organization_id == user.organization_id)
+        query = query.where(
+            AuditLog.organization_id
+            == user.organization_id
+        )
 
-    if user.role != "admin":
-        query = query.filter(AuditLog.user_id == user.id)
+    if user.role != "organization_admin":
+        query = query.where(
+            AuditLog.user_id
+            == user.id
+        )
 
-    return query.order_by(AuditLog.created_at.desc()).all()
+    return paginate(db, query.order_by(AuditLog.created_at.desc()))
 
 
-@router.get("/user/{user_id}")
+@router.get("/user/{user_id}", response_model=Page[AuditLogOut])
 def get_logs_by_user(
     user_id: int,
     db: Session = Depends(get_db),
@@ -231,18 +178,29 @@ def get_logs_by_user(
 ):
     require_auditor_or_admin(user)
 
-    if user.role != "admin" and user.id != user_id:
-        raise HTTPException(status_code=403, detail="Insufficient permissions")
+    if (
+        user.role != "organization_admin"
+        and user.id != user_id
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Insufficient permissions",
+        )
 
-    query = db.query(AuditLog).filter(AuditLog.user_id == user_id)
+    query = select(AuditLog).where(
+        AuditLog.user_id == user_id
+    )
 
     if user.organization_id:
-        query = query.filter(AuditLog.organization_id == user.organization_id)
+        query = query.where(
+            AuditLog.organization_id
+            == user.organization_id
+        )
 
-    return query.order_by(AuditLog.created_at.desc()).all()
+    return paginate(db, query.order_by(AuditLog.created_at.desc()))
 
 
-@router.get("/{audit_log_id}")
+@router.get("/{audit_log_id}", response_model=AuditLogOut)
 def get_log(
     audit_log_id: int,
     db: Session = Depends(get_db),
@@ -250,17 +208,28 @@ def get_log(
 ):
     require_auditor_or_admin(user)
 
-    query = db.query(AuditLog).filter(AuditLog.id == audit_log_id)
+    query = select(AuditLog).where(
+        AuditLog.id == audit_log_id
+    )
 
     if user.organization_id:
-        query = query.filter(AuditLog.organization_id == user.organization_id)
+        query = query.where(
+            AuditLog.organization_id
+            == user.organization_id
+        )
 
-    if user.role != "admin":
-        query = query.filter(AuditLog.user_id == user.id)
+    if user.role != "organization_admin":
+        query = query.where(
+            AuditLog.user_id
+            == user.id
+        )
 
-    log = query.first()
+    log = db.execute(query).scalars().first()
 
     if not log:
-        raise HTTPException(status_code=404, detail="Audit log not found")
+        raise HTTPException(
+            status_code=404,
+            detail="Audit log not found",
+        )
 
     return log

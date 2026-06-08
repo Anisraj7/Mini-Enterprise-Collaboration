@@ -17,7 +17,6 @@ import { useNavigate } from "react-router-dom";
 
 import API from "../api/axios";
 import { getPageItems } from "../api/pagination";
-import Navbar from "../components/Navbar";
 import SLABadge from "../components/SLABadge";
 import StatusBadge from "../components/StatusBadge";
 
@@ -159,7 +158,7 @@ export default function Approval() {
       return false;
     }
 
-    if (user.role === "admin") {
+    if (canManageApprovals) {
       return true;
     }
 
@@ -176,9 +175,18 @@ export default function Approval() {
     return matchesSearch && matchesFilter;
   });
 
+  const canManageApprovals = ["organization_admin", "workspace_admin"].includes(
+    user?.role,
+  );
+
+  const canEscalateApproval = [
+    "organization_admin",
+    "workspace_admin",
+    "manager",
+  ].includes(user?.role);
+
   return (
     <div className="bg-gradient-to-br from-slate-100 via-indigo-50 to-cyan-50 min-h-screen">
-      <Navbar />
 
       <div className="p-6 max-w-7xl mx-auto">
         {/* HEADER */}
@@ -363,17 +371,25 @@ export default function Approval() {
                 <div className="mt-5 grid gap-4 md:grid-cols-4">
                   <div className="rounded-2xl bg-gray-50 p-4">
                     <p className="mb-2 text-xs text-gray-400">SLA Status</p>
-                    {approval.sla_status ? <SLABadge status={approval.sla_status} /> : <span className="text-sm text-gray-500">Not tracked</span>}
+                    {approval.sla_status ? (
+                      <SLABadge status={approval.sla_status} />
+                    ) : (
+                      <span className="text-sm text-gray-500">Not tracked</span>
+                    )}
                   </div>
                   <div className="rounded-2xl bg-gray-50 p-4">
                     <p className="mb-2 text-xs text-gray-400">SLA Due Time</p>
                     <p className="text-sm font-semibold text-gray-700">
-                      {approval.sla_due_time ? new Date(approval.sla_due_time).toLocaleString() : "N/A"}
+                      {approval.sla_due_time
+                        ? new Date(approval.sla_due_time).toLocaleString()
+                        : "N/A"}
                     </p>
                   </div>
                   <div className="rounded-2xl bg-gray-50 p-4">
                     <p className="mb-2 text-xs text-gray-400">Escalated</p>
-                    <StatusBadge status={approval.is_escalated ? "Active" : "Disabled"} />
+                    <StatusBadge
+                      status={approval.is_escalated ? "Active" : "Disabled"}
+                    />
                   </div>
                   <div className="rounded-2xl bg-gray-50 p-4">
                     <p className="mb-2 text-xs text-gray-400">Escalated To</p>
@@ -388,7 +404,8 @@ export default function Approval() {
                   <div className="flex items-center gap-2">
                     <User size={15} />
 
-                    {approval.requested_by_name || `User ${approval.requested_by}`}
+                    {approval.requested_by_name ||
+                      `User ${approval.requested_by}`}
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -451,7 +468,7 @@ export default function Approval() {
                     History
                   </button>
 
-                  {(user?.role === "admin" || user?.role === "manager") && (
+                  {canEscalateApproval && (
                     <button
                       onClick={() => navigate("/approval-escalations")}
                       className="bg-orange-100 hover:bg-orange-200 text-orange-700 px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition"

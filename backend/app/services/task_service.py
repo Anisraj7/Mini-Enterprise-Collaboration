@@ -39,7 +39,7 @@ from app.repository.task_repository import (
     commit_refresh,
 )
 
-from sqlalchemy import func
+from sqlalchemy import func, select
 
 
 WORKFLOW_STATUSES = ("todo", "in_progress", "review", "done")
@@ -87,10 +87,15 @@ def validate_status_transition(current_status: str, new_status: str):
 
 def can_access_task(task: Task, user: User):
 
-    if user.organization_id and task.organization_id != user.organization_id:
+    if (
+        user.organization_id and task.organization_id != user.organization_id):
         return False
 
-    if user.role == "admin":
+    if user.role in (
+        "super_admin",
+        "organization_admin",
+        "workspace_admin",
+    ):
         return True
 
     if user.role == "manager":
@@ -100,7 +105,6 @@ def can_access_task(task: Task, user: User):
         )
 
     return task.assigned_to_id == user.id
-
 
 def get_task_or_404(db: Session, task_id: int):
 
@@ -117,7 +121,9 @@ def get_task_or_404(db: Session, task_id: int):
 
 def ensure_user_exists(db: Session, user_id: int):
 
-    user = db.query(User).filter(User.id == user_id).first()
+    user = db.execute(
+        select(User).where(User.id == user_id)
+    ).scalars().first()
 
     if not user:
         raise HTTPException(
@@ -130,16 +136,16 @@ def ensure_user_exists(db: Session, user_id: int):
 
 def workspace_user_ids(db: Session, user: User):
 
-    query = db.query(User.id).filter(
+    query = select(User.id).where(
         User.is_active.is_(True)
     )
 
     if user.organization_id:
-        query = query.filter(
+        query = query.where(
             User.organization_id == user.organization_id
         )
 
-    return [row[0] for row in query.all()]
+    return [row[0] for row in db.execute(query).all()]
 
 
 def apply_task_status(task: Task, new_status: str, user: User, db: Session):
@@ -217,8 +223,9 @@ def create_task_service(
             new_task.priority,
         )
         db.refresh(new_task)
-    except HTTPException:
-        pass
+
+    except HTTPException as e:
+        print("SLA ERROR:", e.detail)
 
     record_event(
         db,
@@ -315,8 +322,9 @@ def create_task_with_document_service(
             new_task.priority,
         )
         db.refresh(new_task)
-    except HTTPException:
-        pass
+
+    except HTTPException as e:
+        print("SLA ERROR:", e.detail)
 
     commit_refresh(db, new_task)
 
@@ -343,7 +351,7 @@ def list_tasks_service(
         Task.created_at.desc()
     )
 
-    return paginate(query)
+    return paginate(db, query)
 
 
 def get_task_service(
@@ -391,11 +399,10 @@ def kanban_service(
         for status_name in WORKFLOW_STATUSES
     }
 
-    tasks = (
+    tasks = db.execute(
         visible_tasks_query(db, current_user)
         .order_by(Task.updated_at.desc())
-        .all()
-    )
+    ).scalars().all()
 
     for task in tasks:
 
@@ -429,10 +436,10 @@ def recommendation_service(
     current_user: User,
 ):
 
-    candidates = assignable_users_query(
+    candidates = db.execute(assignable_users_query(
         db,
         current_user,
-    ).all()
+    )).scalars().all()
 
     if not candidates:
         raise HTTPException(
@@ -441,29 +448,29 @@ def recommendation_service(
         )
 
     open_counts = dict(
-        db.query(
+        db.execute(select(
             Task.assigned_to_id,
             func.count(Task.id),
         )
-        .filter(
+        .where(
             Task.status != "done",
             Task.assigned_to_id.isnot(None),
         )
         .group_by(Task.assigned_to_id)
-        .all()
+        ).all()
     )
 
     done_counts = dict(
-        db.query(
+        db.execute(select(
             Task.assigned_to_id,
             func.count(Task.id),
         )
-        .filter(
+        .where(
             Task.status == "done",
             Task.assigned_to_id.isnot(None),
         )
         .group_by(Task.assigned_to_id)
-        .all()
+        ).all()
     )
 
     def score(candidate):

@@ -1,3 +1,4 @@
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.notification import (
@@ -14,8 +15,8 @@ class NotificationRepository:
     ):
 
         query = (
-            db.query(Notification)
-            .filter(
+            select(Notification)
+            .where(
                 Notification.user_id
                 == user.id
             )
@@ -23,7 +24,7 @@ class NotificationRepository:
 
         if user.organization_id:
 
-            query = query.filter(
+            query = query.where(
                 Notification.organization_id
                 == user.organization_id
             )
@@ -40,13 +41,13 @@ class NotificationRepository:
     ):
 
         return (
-            db.query(Notification)
-            .filter(
+            db.execute(select(Notification).where(
                 Notification.id
                 == notification_id,
                 Notification.user_id
                 == user_id,
-            )
+            ))
+            .scalars()
             .first()
         )
 
@@ -81,12 +82,10 @@ class NotificationRepository:
     ):
 
         return (
-            db.query(Notification)
-            .filter(
+            db.execute(select(func.count(Notification.id)).where(
                 Notification.user_id
                 == user_id,
-                Notification.is_read
-                == False,
-            )
-            .count()
+                Notification.is_read.is_(False),
+            ))
+            .scalar_one()
         )

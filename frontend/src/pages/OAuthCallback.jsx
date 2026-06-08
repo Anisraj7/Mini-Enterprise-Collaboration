@@ -1,12 +1,15 @@
 import { useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import API from "../api/axios";
 
 export default function OAuthCallback() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const accessToken = searchParams.get("access_token");
   const refreshToken = searchParams.get("refresh_token");
-  const error = accessToken ? "" : "Google login did not return an access token.";
+  const error = accessToken
+    ? ""
+    : "Google login did not return an access token.";
 
   useEffect(() => {
     if (!accessToken) {
@@ -17,7 +20,30 @@ export default function OAuthCallback() {
     if (refreshToken) {
       localStorage.setItem("refresh_token", refreshToken);
     }
-    navigate("/dashboard", { replace: true });
+
+    // Fetch user info to get role and organization_id
+    const fetchUserAndRedirect = async () => {
+      try {
+        const response = await API.get("/auth/me");
+        const user = response.data;
+
+        localStorage.setItem("user", JSON.stringify(user));
+        localStorage.setItem("role", user.role);
+
+        if (user.role === "super_admin") {
+          navigate("/organizations", { replace: true });
+        } else if (user.role === "organization_admin") {
+          navigate(`/organizations/${user.organization_id}`, { replace: true });
+        } else {
+          navigate("/dashboard", { replace: true });
+        }
+      } catch (err) {
+        console.error("Failed to fetch user info:", err);
+        navigate("/dashboard", { replace: true });
+      }
+    };
+
+    fetchUserAndRedirect();
   }, [accessToken, refreshToken, navigate]);
 
   return (
@@ -34,7 +60,9 @@ export default function OAuthCallback() {
             </Link>
           </>
         ) : (
-          <p className="text-sm text-gray-500">Redirecting to your dashboard...</p>
+          <p className="text-sm text-gray-500">
+            Redirecting to your dashboard...
+          </p>
         )}
       </div>
     </div>

@@ -35,6 +35,12 @@ router = APIRouter(
     tags=["Tasks"],
 )
 
+MANAGEMENT_ROLES = [
+    "organization_admin",
+    "workspace_admin",
+    "manager",
+]
+
 
 @router.post(
     "/",
@@ -44,7 +50,7 @@ def create_task(
     task: TaskCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(
-        require_roles(["admin", "manager"])
+        require_roles(MANAGEMENT_ROLES)
     ),
 ):
     return create_task_service(
@@ -68,7 +74,7 @@ def create_task_with_document(
     document: UploadFile = File(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(
-        require_roles(["admin", "manager"])
+        require_roles(MANAGEMENT_ROLES)
     ),
 ):
     return create_task_with_document_service(
@@ -113,7 +119,7 @@ def get_kanban(
 def assignment_recommendation(
     db: Session = Depends(get_db),
     current_user: User = Depends(
-        require_roles(["admin", "manager"])
+        require_roles(MANAGEMENT_ROLES)
     ),
 ):
     return recommendation_service(
@@ -183,7 +189,7 @@ def assign_task(
     assignment: TaskAssign,
     db: Session = Depends(get_db),
     current_user: User = Depends(
-        require_roles(["admin", "manager"])
+        require_roles(MANAGEMENT_ROLES)
     ),
 ):
     return assign_task_service(
@@ -202,7 +208,7 @@ def smart_assign_task(
     task_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(
-        require_roles(["admin", "manager"])
+        require_roles(MANAGEMENT_ROLES)
     ),
 ):
     return smart_assign_task_service(
@@ -217,7 +223,11 @@ def delete_task(
     task_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(
-        require_roles(["admin"])
+        require_roles(
+            [
+                "organization_admin",
+            ]
+        )
     ),
 ):
     return delete_task_service(

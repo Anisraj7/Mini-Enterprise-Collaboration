@@ -1,5 +1,6 @@
-from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, Integer, String, Index
-from sqlalchemy.orm import relationship
+from typing import Any
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, Index
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime
 
 from app.db.database import Base
@@ -8,42 +9,42 @@ from app.db.database import Base
 class Task(Base):
     __tablename__ = "tasks"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id: Mapped[Any] = mapped_column(Integer, primary_key=True, index=True)
 
-    title = Column(String(200), nullable=False)
+    title: Mapped[Any] = mapped_column(String(200), nullable=False)
 
-    description = Column(String(1000), nullable=True)
+    description: Mapped[Any] = mapped_column(String(1000), nullable=True)
 
-    status = Column(
+    status: Mapped[Any] = mapped_column(
         Enum("todo", "in_progress", "review", "done", name="task_status"),
         default="todo",
         nullable=False,
         index=True
     )
 
-    priority = Column(String(20), default="medium", nullable=False, index=True)
+    priority: Mapped[Any] = mapped_column(String(20), default="medium", nullable=False, index=True)
 
-    due_date = Column(DateTime, nullable=True, index=True)
+    due_date: Mapped[Any] = mapped_column(DateTime, nullable=True, index=True)
 
-    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    created_by_id: Mapped[Any] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
 
-    assigned_to_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    assigned_to_id: Mapped[Any] = mapped_column(Integer, ForeignKey("users.id"), nullable=True, index=True)
 
-    updated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    updated_by: Mapped[Any] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
 
-    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True, index=True)
+    organization_id: Mapped[Any] = mapped_column(Integer, ForeignKey("organizations.id"), nullable=True, index=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    created_at: Mapped[Any] = mapped_column(DateTime, default=datetime.utcnow, index=True)
 
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, index=True)
+    updated_at: Mapped[Any] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, index=True)
 
-    document = Column(String, nullable=True)
+    document: Mapped[Any] = mapped_column(String, nullable=True)
 
-    sla_status = Column(String(50), nullable=True, index=True)
+    sla_status: Mapped[Any] = mapped_column(String(50), nullable=True, index=True)
 
-    sla_due_time = Column(DateTime, nullable=True, index=True)
+    sla_due_time: Mapped[Any] = mapped_column(DateTime, nullable=True, index=True)
 
-    is_sla_breached = Column(Boolean, default=False, nullable=False, index=True)
+    is_sla_breached: Mapped[Any] = mapped_column(Boolean, default=False, nullable=False, index=True)
 
     created_by = relationship("User", foreign_keys=[created_by_id])
 
@@ -66,17 +67,17 @@ class Task(Base):
 class TaskHistory(Base):
     __tablename__ = "task_history"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id: Mapped[Any] = mapped_column(Integer, primary_key=True, index=True)
 
-    task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False, index=True)
+    task_id: Mapped[Any] = mapped_column(Integer, ForeignKey("tasks.id"), nullable=False, index=True)
 
-    old_status = Column(String, nullable=False)
+    old_status: Mapped[Any] = mapped_column(String, nullable=False)
 
-    new_status = Column(String, nullable=False)
+    new_status: Mapped[Any] = mapped_column(String, nullable=False)
 
-    changed_by = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    changed_by: Mapped[Any] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
 
-    changed_at = Column(DateTime, default=datetime.utcnow, index=True)
+    changed_at: Mapped[Any] = mapped_column(DateTime, default=datetime.utcnow, index=True)
 
     task = relationship("Task")
 

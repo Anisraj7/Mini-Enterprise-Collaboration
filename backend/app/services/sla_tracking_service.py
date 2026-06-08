@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 
 from fastapi import HTTPException
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.sla_tracking import (
@@ -45,12 +46,12 @@ class SLATrackingService:
         # FIND ACTIVE SLA RULE
 
         sla_rule = (
-            db.query(SLARule)
-            .filter(
+            db.execute(select(SLARule).where(
                 SLARule.module_name == module_name,
                 SLARule.priority == priority,
-                SLARule.is_active == True,
-            )
+                SLARule.is_active.is_(True),
+            ))
+            .scalars()
             .first()
         )
 
@@ -94,10 +95,10 @@ class SLATrackingService:
         if normalized_module == "task":
 
             task = (
-                db.query(Task)
-                .filter(
+                db.execute(select(Task).where(
                     Task.id == record_id
-                )
+                ))
+                .scalars()
                 .first()
             )
 
@@ -123,11 +124,11 @@ class SLATrackingService:
         elif normalized_module == "approval":
 
             approval = (
-                db.query(Approval)
-                .filter(
+                db.execute(select(Approval).where(
                     Approval.id
                     == record_id
-                )
+                ))
+                .scalars()
                 .first()
             )
 
@@ -245,11 +246,11 @@ class SLATrackingService:
         if normalized_module == "task":
 
             task = (
-                db.query(Task)
-                .filter(
+                db.execute(select(Task).where(
                     Task.id
                     == tracking.record_id
-                )
+                ))
+                .scalars()
                 .first()
             )
 
@@ -277,11 +278,11 @@ class SLATrackingService:
         elif normalized_module == "approval":
 
             approval = (
-                db.query(Approval)
-                .filter(
+                db.execute(select(Approval).where(
                     Approval.id
                     == tracking.record_id
-                )
+                ))
+                .scalars()
                 .first()
             )
 
@@ -398,12 +399,12 @@ class SLATrackingService:
         current_time = datetime.utcnow()
 
         return (
-            db.query(SLATracking)
-            .filter(
+            db.execute(select(SLATracking).where(
                 SLATracking.status
                 == "ACTIVE",
                 SLATracking.due_time
                 < current_time,
-            )
+            ))
+            .scalars()
             .all()
         )

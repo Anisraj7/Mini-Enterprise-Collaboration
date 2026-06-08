@@ -1,5 +1,6 @@
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Index
-from sqlalchemy.orm import relationship
+from typing import Any
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Index
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime
 
 from app.db.database import Base
@@ -8,14 +9,14 @@ from app.db.database import Base
 class ActivityLog(Base):
     __tablename__ = "activity_logs"
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    action = Column(String, nullable=False, index=True)
-    entity_type = Column(String, nullable=False, index=True)
-    entity_id = Column(Integer, nullable=False, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    id: Mapped[Any] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[Any] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    action: Mapped[Any] = mapped_column(String, nullable=False, index=True)
+    entity_type: Mapped[Any] = mapped_column(String, nullable=False, index=True)
+    entity_id: Mapped[Any] = mapped_column(Integer, nullable=False, index=True)
+    created_at: Mapped[Any] = mapped_column(DateTime, default=datetime.utcnow, index=True)
     
-    organization_id = Column(Integer, ForeignKey("organizations.id"))
+    organization_id: Mapped[Any] = mapped_column(Integer, ForeignKey("organizations.id"))
 
     user = relationship("User")
 

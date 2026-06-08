@@ -1,13 +1,15 @@
 from datetime import datetime
 
 from fastapi import HTTPException
+from sqlalchemy import select
+
 from app.models.subscription import Subscription
 
 def consume_credits(db, organization_id: int, amount: int):
 
-    subscription = db.query(Subscription).filter(
+    subscription = db.execute(select(Subscription).where(
         Subscription.organization_id == organization_id
-    ).first()
+    )).scalars().first()
 
     if not subscription:
         raise HTTPException(status_code=404, detail="Subscription not found")

@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Index
-from sqlalchemy.orm import relationship
+from typing import Any
+from sqlalchemy import Integer, String, Boolean, DateTime, ForeignKey, Index
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime
 
 from app.db.database import Base
@@ -8,27 +9,24 @@ from app.db.database import Base
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id: Mapped[Any] = mapped_column(Integer, primary_key=True, index=True)
 
-    name = Column(String(100), nullable=False)
+    name: Mapped[Any] = mapped_column(String(100), nullable=False)
 
-    email = Column(String(255), unique=True, nullable=False, index=True)
+    email: Mapped[Any] = mapped_column(String(255), unique=True, nullable=False, index=True)
 
-    hashed_password = Column(String(255), nullable=False)
+    hashed_password: Mapped[Any] = mapped_column(String(255), nullable=False)
 
-    role = Column(String(20), default="employee", nullable=False, index=True)
+    role: Mapped[Any] = mapped_column(String(30), default="employee", nullable=False, index=True)
+    
+    is_active: Mapped[Any] = mapped_column(Boolean, default=True, index=True)
 
-    is_active = Column(Boolean, default=True, index=True)
+    created_at: Mapped[Any] = mapped_column(DateTime, default=datetime.utcnow)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[Any] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    organization_id = Column(
-        Integer,
-        ForeignKey("organizations.id"),
-        nullable=True,
-        index=True
+    organization_id: Mapped[Any] = mapped_column(
+        Integer, ForeignKey("organizations.id"), nullable=True, index=True
     )
 
     organization = relationship("Organization", back_populates="users")

@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from sqlalchemy import select
 from sqlalchemy.orm import (
     Session,
     aliased,
@@ -39,7 +40,7 @@ class ApprovalDelegationRepository:
         Delegatee = aliased(User)
 
         results = (
-            db.query(
+            db.execute(select(
                 ApprovalDelegation,
                 Delegator.name.label(
                     "delegator_name"
@@ -58,14 +59,14 @@ class ApprovalDelegationRepository:
                 ApprovalDelegation.delegatee_id
                 == Delegatee.id,
             )
-            .filter(
+            .where(
                 ApprovalDelegation.delegator_id
                 == user_id
             )
             .order_by(
                 ApprovalDelegation.id.desc()
             )
-            .all()
+            ).all()
         )
 
         delegations = []
@@ -102,7 +103,7 @@ class ApprovalDelegationRepository:
         Delegatee = aliased(User)
 
         results = (
-            db.query(
+            db.execute(select(
                 ApprovalDelegation,
                 Delegator.name.label(
                     "delegator_name"
@@ -121,15 +122,14 @@ class ApprovalDelegationRepository:
                 ApprovalDelegation.delegatee_id
                 == Delegatee.id,
             )
-            .filter(
-                ApprovalDelegation.is_active
-                == True,
+            .where(
+                ApprovalDelegation.is_active.is_(True),
                 ApprovalDelegation.start_date
                 <= now,
                 ApprovalDelegation.end_date
                 >= now,
             )
-            .all()
+            ).all()
         )
 
         delegations = []
@@ -161,13 +161,14 @@ class ApprovalDelegationRepository:
     ):
 
         return (
-            db.query(
+            db.execute(select(
                 ApprovalDelegation
             )
-            .filter(
+            .where(
                 ApprovalDelegation.id
                 == delegation_id
-            )
+            ))
+            .scalars()
             .first()
         )
 
@@ -180,18 +181,18 @@ class ApprovalDelegationRepository:
     ):
 
         return (
-            db.query(
+            db.execute(select(
                 ApprovalDelegation
             )
-            .filter(
+            .where(
                 ApprovalDelegation.delegator_id
                 == delegator_id,
-                ApprovalDelegation.is_active
-                == True,
+                ApprovalDelegation.is_active.is_(True),
                 ApprovalDelegation.start_date
                 <= end_date,
                 ApprovalDelegation.end_date
                 >= start_date,
-            )
+            ))
+            .scalars()
             .first()
         )

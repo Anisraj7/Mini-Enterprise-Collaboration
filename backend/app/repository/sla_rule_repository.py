@@ -1,3 +1,4 @@
+from sqlalchemy import select, func, and_
 from sqlalchemy.orm import Session
 
 from app.models.sla_rule import SLARule
@@ -31,10 +32,11 @@ class SLARuleRepository:
         """
 
         return (
-            db.query(SLARule)
+            db.execute(select(SLARule)
             .order_by(
                 SLARule.id.desc()
-            )
+            ))
+            .scalars()
             .all()
         )
 
@@ -47,13 +49,14 @@ class SLARuleRepository:
         """
 
         return (
-            db.query(SLARule)
-            .filter(
-                SLARule.is_active == True
+            db.execute(select(SLARule)
+            .where(
+                SLARule.is_active.is_(True)
             )
             .order_by(
                 SLARule.id.desc()
-            )
+            ))
+            .scalars()
             .all()
         )
 
@@ -67,11 +70,11 @@ class SLARuleRepository:
         """
 
         return (
-            db.query(SLARule)
-            .filter(
+            db.execute(select(SLARule).where(
                 SLARule.id
                 == sla_rule_id
-            )
+            ))
+            .scalars()
             .first()
         )
 
@@ -86,15 +89,20 @@ class SLARuleRepository:
         """
 
         return (
-            db.query(SLARule)
-            .filter(
-                SLARule.module_name
-                == module_name,
-                SLARule.priority
-                == priority,
-                SLARule.is_active
-                == True,
+            db.execute(
+                select(SLARule).where(
+                    and_(
+                        func.lower(SLARule.module_name)
+                        == module_name.lower(),
+
+                        func.lower(SLARule.priority)
+                        == priority.lower(),
+
+                        SLARule.is_active.is_(True),
+                    )
+                )
             )
+            .scalars()
             .first()
         )
 
@@ -104,20 +112,21 @@ class SLARuleRepository:
         module_name: str,
         priority: str,
     ):
-        """
-        Get active SLA rule by module and priority
-        """
-
         return (
-            db.query(SLARule)
-            .filter(
-                SLARule.module_name
-                == module_name,
-                SLARule.priority
-                == priority,
-                SLARule.is_active
-                == True,
+            db.execute(
+                select(SLARule).where(
+                    and_(
+                        func.lower(SLARule.module_name)
+                        == module_name.lower(),
+
+                        func.lower(SLARule.priority)
+                        == priority.lower(),
+
+                        SLARule.is_active.is_(True),
+                    )
+                )
             )
+            .scalars()
             .first()
         )
 

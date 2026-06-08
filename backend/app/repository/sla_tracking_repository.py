@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.sla_tracking import (
@@ -51,11 +52,11 @@ class SLATrackingRepository:
         """
 
         return (
-            db.query(SLATracking)
-            .filter(
+            db.execute(select(SLATracking).where(
                 SLATracking.id
                 == tracking_id
-            )
+            ))
+            .scalars()
             .first()
         )
 
@@ -68,10 +69,11 @@ class SLATrackingRepository:
         """
 
         return (
-            db.query(SLATracking)
+            db.execute(select(SLATracking)
             .order_by(
                 SLATracking.id.desc()
-            )
+            ))
+            .scalars()
             .all()
         )
 
@@ -84,14 +86,14 @@ class SLATrackingRepository:
         """
 
         return (
-            db.query(SLATracking)
-            .filter(
+            db.execute(select(SLATracking).where(
                 SLATracking.status
                 == "ACTIVE"
             )
             .order_by(
                 SLATracking.due_time.asc()
-            )
+            ))
+            .scalars()
             .all()
         )
 
@@ -104,14 +106,14 @@ class SLATrackingRepository:
         """
 
         return (
-            db.query(SLATracking)
-            .filter(
+            db.execute(select(SLATracking).where(
                 SLATracking.status
                 == "BREACHED"
             )
             .order_by(
                 SLATracking.due_time.desc()
-            )
+            ))
+            .scalars()
             .all()
         )
 
@@ -124,8 +126,7 @@ class SLATrackingRepository:
         """
 
         return (
-            db.query(SLATracking)
-            .filter(
+            db.execute(select(SLATracking).where(
                 SLATracking.status.in_(
                     [
                         "COMPLETED_WITHIN_SLA",
@@ -135,7 +136,8 @@ class SLATrackingRepository:
             )
             .order_by(
                 SLATracking.completed_time.desc()
-            )
+            ))
+            .scalars()
             .all()
         )
 
@@ -148,14 +150,14 @@ class SLATrackingRepository:
         """
 
         return (
-            db.query(SLATracking)
-            .filter(
+            db.execute(select(SLATracking).where(
                 SLATracking.status
                 == "ESCALATED"
             )
             .order_by(
                 SLATracking.updated_at.desc()
-            )
+            ))
+            .scalars()
             .all()
         )
 
@@ -169,14 +171,14 @@ class SLATrackingRepository:
         """
 
         return (
-            db.query(SLATracking)
-            .filter(
+            db.execute(select(SLATracking).where(
                 SLATracking.module_name
                 == module_name
             )
             .order_by(
                 SLATracking.id.desc()
-            )
+            ))
+            .scalars()
             .all()
         )
 
@@ -191,8 +193,7 @@ class SLATrackingRepository:
         """
 
         return (
-            db.query(SLATracking)
-            .filter(
+            db.execute(select(SLATracking).where(
                 SLATracking.module_name
                 == module_name,
                 SLATracking.record_id
@@ -201,6 +202,8 @@ class SLATrackingRepository:
             .order_by(
                 SLATracking.id.desc()
             )
+            )
+            .scalars()
             .first()
         )
 
@@ -215,8 +218,7 @@ class SLATrackingRepository:
         current_time = datetime.utcnow()
 
         return (
-            db.query(SLATracking)
-            .filter(
+            db.execute(select(SLATracking).where(
                 SLATracking.status
                 == "ACTIVE",
                 SLATracking.due_time
@@ -224,7 +226,8 @@ class SLATrackingRepository:
             )
             .order_by(
                 SLATracking.due_time.asc()
-            )
+            ))
+            .scalars()
             .all()
         )
 
@@ -238,14 +241,14 @@ class SLATrackingRepository:
         """
 
         return (
-            db.query(SLATracking)
-            .filter(
+            db.execute(select(SLATracking).where(
                 SLATracking.status
                 == status
             )
             .order_by(
                 SLATracking.id.desc()
-            )
+            ))
+            .scalars()
             .all()
         )
 

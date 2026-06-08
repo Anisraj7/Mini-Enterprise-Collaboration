@@ -33,6 +33,7 @@ from app.core.security import (
     hash_password,
 )
 
+from app.models.enums import UserRole
 from app.models.refresh_token import RefreshToken
 from app.models.user import User
 
@@ -49,8 +50,7 @@ oauth.register(
     client_id=GOOGLE_CLIENT_ID,
     client_secret=GOOGLE_CLIENT_SECRET,
     server_metadata_url=(
-        "https://accounts.google.com/"
-        ".well-known/openid-configuration"
+        "https://accounts.google.com/" ".well-known/openid-configuration"
     ),
     client_kwargs={
         "scope": "openid email profile",
@@ -62,18 +62,13 @@ async def google_login_service(
     request,
 ):
 
-    if (
-        not GOOGLE_CLIENT_ID
-        or not GOOGLE_CLIENT_SECRET
-    ):
+    if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Google OAuth is not configured",
         )
 
-    redirect_uri = request.url_for(
-        "google_callback"
-    )
+    redirect_uri = request.url_for("google_callback")
 
     return await oauth.google.authorize_redirect(
         request,
@@ -86,16 +81,11 @@ async def google_callback_service(
     db: Session,
 ):
 
-    token = await oauth.google.authorize_access_token(
-        request
-    )
+    token = await oauth.google.authorize_access_token(request)
 
     user = token.get("userinfo")
 
-    if (
-        not user
-        or not user.get("email")
-    ):
+    if not user or not user.get("email"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Google account did not provide an email",
@@ -109,15 +99,10 @@ async def google_callback_service(
     if not db_user:
 
         db_user = User(
-            name=(
-                user.get("name")
-                or user["email"].split("@")[0]
-            ),
+            name=(user.get("name") or user["email"].split("@")[0]),
             email=user["email"],
-            role="employee",
-            hashed_password=hash_password(
-                secrets.token_urlsafe(32)
-            ),
+            role=UserRole.EMPLOYEE.value,
+            hashed_password=hash_password(secrets.token_urlsafe(32)),
             is_active=True,
         )
 
@@ -148,10 +133,7 @@ async def google_callback_service(
     db_refresh_token = RefreshToken(
         user_id=db_user.id,
         token=refresh_token,
-        expires_at=(
-            datetime.now(timezone.utc)
-            + timedelta(days=7)
-        ),
+        expires_at=(datetime.now(timezone.utc) + timedelta(days=7)),
     )
 
     create_refresh_token_repository(
@@ -169,9 +151,4 @@ async def google_callback_service(
         }
     )
 
-    return RedirectResponse(
-        (
-            f"{FRONTEND_URL.rstrip('/')}"
-            f"/oauth/callback?{params}"
-        )
-    )
+    return RedirectResponse((f"{FRONTEND_URL.rstrip('/')}" f"/oauth/callback?{params}"))

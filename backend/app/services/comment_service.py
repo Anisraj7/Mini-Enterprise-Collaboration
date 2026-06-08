@@ -150,7 +150,7 @@ def get_comments_service(
         user,
     )
 
-    result = paginate(query)
+    result = paginate(db, query)
 
     result = jsonable_encoder(result)
 

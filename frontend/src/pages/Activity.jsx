@@ -14,7 +14,6 @@ import toast from "react-hot-toast";
 import API from "../api/axios";
 import { getUserWebSocketUrl } from "../api/websocket";
 import { getPageCount, getPageItems } from "../api/pagination";
-import Navbar from "../components/Navbar";
 
 export default function Activity() {
 
@@ -259,8 +258,6 @@ export default function Activity() {
   return (
 
     <div className="bg-[#f4f5f7] min-h-screen">
-
-      <Navbar />
 
       <div className="max-w-[1800px] mx-auto px-4 py-4">
 

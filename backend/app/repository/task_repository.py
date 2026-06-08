@@ -1,69 +1,100 @@
-from sqlalchemy import or_
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.task import Task
 from app.models.user import User
 
 
-def get_task_by_id(db: Session, task_id: int):
+def get_task_by_id(
+    db: Session,
+    task_id: int,
+):
     return (
-        db.query(Task)
-        .options(joinedload(Task.assigned_to))
-        .filter(Task.id == task_id)
+        db.execute(
+            select(Task)
+        .options(
+            joinedload(
+                Task.assigned_to
+            )
+        )
+        .where(
+            Task.id == task_id
+        )
+        )
+        .scalars()
         .first()
     )
 
 
-def get_tasks_query(db: Session):
-    return db.query(Task)
+def get_tasks_query(
+    db: Session,
+):
+    return select(Task)
 
 
-def visible_tasks_query(db: Session, user: User):
-
-    query = db.query(Task)
+def visible_tasks_query(
+    db: Session,
+    user: User,
+):
+    query = select(Task)
 
     if user.organization_id:
-        query = query.filter(
-            Task.organization_id == user.organization_id
+        query = query.where(
+            Task.organization_id
+            == user.organization_id
         )
 
-    if user.role == "admin":
+    if user.role in (
+        "super_admin",
+        "organization_admin",
+        "workspace_admin",
+    ):
         return query
 
     if user.role == "manager":
-        return query.filter(
+        return query.where(
             or_(
                 Task.created_by_id == user.id,
                 Task.assigned_to_id == user.id,
             )
         )
 
-    return query.filter(
+    return query.where(
         Task.assigned_to_id == user.id
     )
 
 
-def assignable_users_query(db: Session, user: User):
-
-    query = db.query(User).filter(
+def assignable_users_query(
+    db: Session,
+    user: User,
+):
+    query = select(User).where(
         User.is_active.is_(True)
     )
 
     if user.organization_id:
-        query = query.filter(
-            User.organization_id == user.organization_id
+        query = query.where(
+            User.organization_id
+            == user.organization_id
         )
 
     if user.role == "manager":
-        query = query.filter(
-            User.role.in_(["manager", "employee"])
+        query = query.where(
+            User.role.in_(
+                [
+                    "manager",
+                    "employee",
+                ]
+            )
         )
 
     return query
 
 
-def create_task_repository(db: Session, task: Task):
-
+def create_task_repository(
+    db: Session,
+    task: Task,
+):
     db.add(task)
 
     db.flush()
@@ -71,22 +102,28 @@ def create_task_repository(db: Session, task: Task):
     return task
 
 
-def update_task_repository(db: Session, task: Task):
-
+def update_task_repository(
+    db: Session,
+    task: Task,
+):
     db.add(task)
 
     return task
 
 
-def delete_task_repository(db: Session, task: Task):
-
+def delete_task_repository(
+    db: Session,
+    task: Task,
+):
     db.delete(task)
 
     return True
 
 
-def commit_refresh(db: Session, task: Task):
-
+def commit_refresh(
+    db: Session,
+    task: Task,
+):
     db.commit()
 
     db.refresh(task)

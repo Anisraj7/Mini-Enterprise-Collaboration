@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../api/axios";
-import Navbar from "../components/Navbar";
 
 export default function CreateTask() {
   const navigate = useNavigate();
@@ -27,8 +26,17 @@ export default function CreateTask() {
     const loadUsers = async () => {
       try {
         const response = await API.get("/users/assignable");
-        setUsers(response.data);
-      } catch {
+
+        setUsers(
+          Array.isArray(response.data?.items)
+            ? response.data.items.filter(
+                (user) => user.role === "employee" || user.role === "manager",
+              )
+            : [],
+        );
+      } catch (err) {
+        console.error(err);
+        setUsers([]);
         setError("Unable to load users.");
       }
     };
@@ -92,16 +100,12 @@ export default function CreateTask() {
             const formData = new FormData();
             formData.append("file", file);
 
-            await API.post(
-              `/documents/upload?task_id=${taskId}`,
-              formData,
-              {
-                headers: {
-                  "Content-Type": "multipart/form-data",
-                },
-              }
-            );
-          })
+            await API.post(`/documents/upload?task_id=${taskId}`, formData, {
+              headers: {
+                "Content-Type": "multipart/form-data",
+              },
+            });
+          }),
         );
       }
 
@@ -122,16 +126,11 @@ export default function CreateTask() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <Navbar />
-
       <div className="max-w-3xl mx-auto p-6">
         <div className="bg-white shadow-xl rounded-2xl overflow-hidden">
-          
           {/* Header */}
           <div className="bg-indigo-600 px-6 py-5">
-            <h1 className="text-2xl font-bold text-white">
-              Create New Task
-            </h1>
+            <h1 className="text-2xl font-bold text-white">Create New Task</h1>
 
             <p className="text-indigo-100 text-sm mt-1">
               Manage tasks, assign team members, and upload documents.
@@ -140,7 +139,6 @@ export default function CreateTask() {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="p-6">
-            
             {/* Error */}
             {error && (
               <div className="bg-red-100 border border-red-300 text-red-700 px-4 py-3 rounded-lg mb-5">
@@ -187,7 +185,6 @@ export default function CreateTask() {
 
             {/* Priority & Status */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
-              
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Priority
@@ -244,18 +241,17 @@ export default function CreateTask() {
 
               <select
                 value={form.assigned_to_id}
-                onChange={(e) =>
-                  updateForm("assigned_to_id", e.target.value)
-                }
+                onChange={(e) => updateForm("assigned_to_id", e.target.value)}
                 className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
               >
                 <option value="">Select User (Optional)</option>
 
-                {users.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.name} ({user.role})
-                  </option>
-                ))}
+                {Array.isArray(users) &&
+                  users.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.name} ({user.role})
+                    </option>
+                  ))}
               </select>
             </div>
 
@@ -268,9 +264,7 @@ export default function CreateTask() {
               <input
                 type="file"
                 multiple
-                onChange={(e) =>
-                  setFiles(Array.from(e.target.files))
-                }
+                onChange={(e) => setFiles(Array.from(e.target.files))}
                 className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-gray-50"
               />
 

@@ -3,6 +3,7 @@ from fastapi import (
     status,
 )
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.approval_delegation import (
@@ -60,14 +61,14 @@ class ApprovalDelegationService:
         )
 
         delegator = (
-            db.query(User)
-            .filter(User.id == delegation.delegator_id)
+            db.execute(select(User).where(User.id == delegation.delegator_id))
+            .scalars()
             .first()
         )
 
         delegatee = (
-            db.query(User)
-            .filter(User.id == delegation.delegatee_id)
+            db.execute(select(User).where(User.id == delegation.delegatee_id))
+            .scalars()
             .first()
         )
 
@@ -101,14 +102,14 @@ class ApprovalDelegationService:
         for delegation in delegations:
 
             delegator = (
-                db.query(User)
-                .filter(User.id == delegation.delegator_id)
+                db.execute(select(User).where(User.id == delegation.delegator_id))
+                .scalars()
                 .first()
             )
 
             delegatee = (
-                db.query(User)
-                .filter(User.id == delegation.delegatee_id)
+                db.execute(select(User).where(User.id == delegation.delegatee_id))
+                .scalars()
                 .first()
             )
 
@@ -140,14 +141,14 @@ class ApprovalDelegationService:
         for delegation in delegations:
 
             delegator = (
-                db.query(User)
-                .filter(User.id == delegation.delegator_id)
+                db.execute(select(User).where(User.id == delegation.delegator_id))
+                .scalars()
                 .first()
             )
 
             delegatee = (
-                db.query(User)
-                .filter(User.id == delegation.delegatee_id)
+                db.execute(select(User).where(User.id == delegation.delegatee_id))
+                .scalars()
                 .first()
             )
 
@@ -198,14 +199,14 @@ class ApprovalDelegationService:
         db.refresh(delegation)
 
         delegator = (
-            db.query(User)
-            .filter(User.id == delegation.delegator_id)
+            db.execute(select(User).where(User.id == delegation.delegator_id))
+            .scalars()
             .first()
         )
 
         delegatee = (
-            db.query(User)
-            .filter(User.id == delegation.delegatee_id)
+            db.execute(select(User).where(User.id == delegation.delegatee_id))
+            .scalars()
             .first()
         )
 

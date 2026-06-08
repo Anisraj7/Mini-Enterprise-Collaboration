@@ -4,6 +4,8 @@ from fastapi import (
     status,
 )
 
+from fastapi_pagination import Page
+from fastapi_pagination import paginate
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
@@ -47,12 +49,12 @@ def create_sla_rule(
 
 @router.get(
     "",
-    response_model=list[SLARuleResponse],
+    response_model=Page[SLARuleResponse],
 )
 def get_all_sla_rules(
     db: Session = Depends(get_db),
 ):
-    return SLARuleService.get_all_sla_rules(db)
+    return paginate(SLARuleService.get_all_sla_rules(db))
 
 
 @router.get(

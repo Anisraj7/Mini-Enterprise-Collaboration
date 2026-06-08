@@ -7,6 +7,7 @@ from fastapi import (
 
 from fastapi.encoders import jsonable_encoder
 
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from fastapi_pagination.ext.sqlalchemy import paginate
@@ -96,8 +97,12 @@ def create_notification(
         message = title
 
     preference = (
-        db.query(NotificationPreference)
-        .filter(NotificationPreference.user_id == user_id)
+        db.execute(
+            select(NotificationPreference).where(
+                NotificationPreference.user_id == user_id
+            )
+        )
+        .scalars()
         .first()
     )
 
@@ -200,7 +205,7 @@ def get_notifications_service(
         user,
     )
 
-    result = paginate(query)
+    result = paginate(db, query)
 
     result = jsonable_encoder(result)
 
@@ -233,14 +238,12 @@ def get_unread_count_service(
         }
 
     count = (
-        db.query(Notification)
-        .filter(
+        db.execute(select(func.count(Notification.id)).where(
             Notification.user_id
             == user.id,
-            Notification.is_read
-            == False,
-        )
-        .count()
+            Notification.is_read.is_(False),
+        ))
+        .scalar_one()
     )
 
     cache_set(
@@ -297,13 +300,14 @@ def mark_all_notifications_read_service(
 ):
 
     notifications = (
-        NotificationRepository.notifications_query(
-            db,
-            user,
+        db.execute(
+            NotificationRepository.notifications_query(
+                db,
+                user,
+            )
+            .where(Notification.is_read.is_(False))
         )
-        .filter(
-            Notification.is_read == False
-        )
+        .scalars()
         .all()
     )
 

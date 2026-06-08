@@ -26,10 +26,19 @@ export default function NotificationPreferences() {
   useEffect(() => {
     API.get("/notification-preferences/me")
       .then((response) => {
-        setPreferences(response.data);
+        const data = response.data?.items
+          ? response.data.items[0]
+          : response.data;
+
+        setPreferences(data || {});
         setError("");
       })
-      .catch((err) => setError(err.response?.data?.detail || "Unable to load notification preferences."))
+      .catch((err) =>
+        setError(
+          err.response?.data?.detail ||
+            "Unable to load notification preferences.",
+        ),
+      )
       .finally(() => setLoading(false));
   }, []);
 
@@ -40,7 +49,10 @@ export default function NotificationPreferences() {
       setSuccess("Preferences updated successfully.");
       setError("");
     } catch (err) {
-      setError(err.response?.data?.detail || "Unable to update notification preferences.");
+      setError(
+        err.response?.data?.detail ||
+          "Unable to update notification preferences.",
+      );
       setSuccess("");
     } finally {
       setSaving(false);
@@ -49,27 +61,42 @@ export default function NotificationPreferences() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <Navbar />
       <main className="mx-auto max-w-3xl p-6">
-        <PageHeader title="Notification Preferences" subtitle="Choose which workflow notifications you receive" />
+        <PageHeader
+          title="Notification Preferences"
+          subtitle="Choose which workflow notifications you receive"
+        />
         <ErrorMessage message={error} />
-        {success && <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">{success}</div>}
+        {success && (
+          <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+            {success}
+          </div>
+        )}
 
         {loading || !preferences ? (
           <LoadingSpinner />
         ) : (
           <div className="rounded-lg bg-white p-6 shadow-sm">
             <div className="divide-y divide-gray-100">
-              {preferenceFields.map(([key, label]) => (
-                <div key={key} className="flex items-center justify-between gap-4 py-4">
-                  <span className="font-medium text-gray-800">{label}</span>
-                  <ToggleSwitch
-                    label={label}
-                    checked={Boolean(preferences[key])}
-                    onChange={(value) => setPreferences({ ...preferences, [key]: value })}
-                  />
-                </div>
-              ))}
+              {preferences &&
+                preferenceFields.map(([key, label]) => (
+                  <div
+                    key={key}
+                    className="flex items-center justify-between gap-4 py-4"
+                  >
+                    <span className="font-medium text-gray-800">{label}</span>
+                    <ToggleSwitch
+                      label={label}
+                      checked={Boolean(preferences[key])}
+                      onChange={(value) =>
+                        setPreferences((prev) => ({
+                          ...prev,
+                          [key]: value,
+                        }))
+                      }
+                    />
+                  </div>
+                ))}
             </div>
             <div className="mt-6 flex justify-end">
               <button

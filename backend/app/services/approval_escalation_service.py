@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from fastapi import HTTPException
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.approval import Approval
@@ -34,10 +35,10 @@ class ApprovalEscalationService:
         # VALIDATE APPROVAL
 
         approval = (
-            db.query(Approval)
-            .filter(
+            db.execute(select(Approval).where(
                 Approval.id == approval_id
-            )
+            ))
+            .scalars()
             .first()
         )
 
@@ -148,14 +149,7 @@ class ApprovalEscalationService:
 
         db.refresh(created)
 
-        return {
-            "success": True,
-            "message": (
-                "Approval escalated "
-                "successfully"
-            ),
-            "escalation": created,
-        }
+        return created
 
     # =====================================
     # GET ALL ESCALATIONS
@@ -202,10 +196,10 @@ class ApprovalEscalationService:
         """
 
         approval = (
-            db.query(Approval)
-            .filter(
+            db.execute(select(Approval).where(
                 Approval.id == approval_id
-            )
+            ))
+            .scalars()
             .first()
         )
 
@@ -289,11 +283,11 @@ class ApprovalEscalationService:
         # UPDATE APPROVAL
 
         approval = (
-            db.query(Approval)
-            .filter(
+            db.execute(select(Approval).where(
                 Approval.id
                 == escalation.approval_id
-            )
+            ))
+            .scalars()
             .first()
         )
 
@@ -319,14 +313,7 @@ class ApprovalEscalationService:
 
             db.refresh(updated)
 
-        return {
-            "success": True,
-            "message": (
-                "Escalation resolved "
-                "successfully"
-            ),
-            "escalation": updated,
-        }
+        return updated
 
     # =====================================
     # CANCEL ESCALATION
@@ -389,11 +376,11 @@ class ApprovalEscalationService:
         # UPDATE APPROVAL
 
         approval = (
-            db.query(Approval)
-            .filter(
+            db.execute(select(Approval).where(
                 Approval.id
                 == escalation.approval_id
-            )
+            ))
+            .scalars()
             .first()
         )
 
@@ -419,11 +406,4 @@ class ApprovalEscalationService:
 
             db.refresh(updated)
 
-        return {
-            "success": True,
-            "message": (
-                "Escalation cancelled "
-                "successfully"
-            ),
-            "escalation": updated,
-        }
+        return updated

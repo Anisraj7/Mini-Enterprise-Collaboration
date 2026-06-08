@@ -1,8 +1,8 @@
+from typing import Any
 from datetime import datetime
 
 from sqlalchemy import (
     Boolean,
-    Column,
     DateTime,
     ForeignKey,
     Index,
@@ -11,6 +11,8 @@ from sqlalchemy import (
     Text,
 )
 
+from sqlalchemy.orm import Mapped, mapped_column
+
 from app.db.database import Base
 
 
@@ -18,60 +20,60 @@ class Notification(Base):
 
     __tablename__ = "notifications"
 
-    id = Column(
+    id: Mapped[Any] = mapped_column(
         Integer,
         primary_key=True,
         index=True,
     )
 
-    user_id = Column(
+    user_id: Mapped[Any] = mapped_column(
         Integer,
         ForeignKey("users.id"),
         nullable=False,
         index=True,
     )
 
-    organization_id = Column(
+    organization_id: Mapped[Any] = mapped_column(
         Integer,
         ForeignKey("organizations.id"),
         nullable=True,
         index=True,
     )
 
-    title = Column(
+    title: Mapped[Any] = mapped_column(
         String(255),
         nullable=False,
         default="System Notification",
     )
 
-    message = Column(
+    message: Mapped[Any] = mapped_column(
         Text,
         nullable=False,
         default="",
     )
 
-    notification_type = Column(
+    notification_type: Mapped[Any] = mapped_column(
         String(100),
         nullable=False,
         default="GENERAL",
         index=True,
     )
 
-    priority = Column(
+    priority: Mapped[Any] = mapped_column(
         String(50),
         nullable=False,
         default="MEDIUM",
         index=True,
     )
 
-    is_read = Column(
+    is_read: Mapped[Any] = mapped_column(
         Boolean,
         nullable=False,
         default=False,
         index=True,
     )
 
-    created_at = Column(
+    created_at: Mapped[Any] = mapped_column(
         DateTime,
         nullable=False,
         default=datetime.utcnow,

@@ -1,7 +1,7 @@
+from typing import Any
 from datetime import datetime
 
 from sqlalchemy import (
-    Column,
     DateTime,
     ForeignKey,
     Index,
@@ -10,26 +10,28 @@ from sqlalchemy import (
     Text,
 )
 
+from sqlalchemy.orm import Mapped, mapped_column
+
 from app.db.database import Base
 
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"
 
-    id = Column(
+    id: Mapped[Any] = mapped_column(
         Integer,
         primary_key=True,
         index=True,
     )
 
-    user_id = Column(
+    user_id: Mapped[Any] = mapped_column(
         Integer,
         ForeignKey("users.id"),
         nullable=True,
         index=True,
     )
 
-    organization_id = Column(
+    organization_id: Mapped[Any] = mapped_column(
         Integer,
         ForeignKey("organizations.id"),
         nullable=True,
@@ -39,19 +41,19 @@ class AuditLog(Base):
     # =====================================
     # MODULE / ENTITY INFO
     # =====================================
-    module_name = Column(
+    module_name: Mapped[Any] = mapped_column(
         String,
         nullable=False,
         index=True,
     )
 
-    action_type = Column(
+    action_type: Mapped[Any] = mapped_column(
         String,
         nullable=False,
         index=True,
     )
 
-    record_id = Column(
+    record_id: Mapped[Any] = mapped_column(
         Integer,
         nullable=True,
         index=True,
@@ -60,12 +62,12 @@ class AuditLog(Base):
     # =====================================
     # DATA SNAPSHOTS
     # =====================================
-    old_data = Column(
+    old_data: Mapped[Any] = mapped_column(
         Text,
         nullable=True,
     )
 
-    new_data = Column(
+    new_data: Mapped[Any] = mapped_column(
         Text,
         nullable=True,
     )
@@ -73,12 +75,12 @@ class AuditLog(Base):
     # =====================================
     # REQUEST INFO
     # =====================================
-    ip_address = Column(
+    ip_address: Mapped[Any] = mapped_column(
         String,
         nullable=True,
     )
 
-    user_agent = Column(
+    user_agent: Mapped[Any] = mapped_column(
         Text,
         nullable=True,
     )
@@ -86,7 +88,7 @@ class AuditLog(Base):
     # =====================================
     # TIMESTAMP
     # =====================================
-    created_at = Column(
+    created_at: Mapped[Any] = mapped_column(
         DateTime,
         default=datetime.utcnow,
         index=True,

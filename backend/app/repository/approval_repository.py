@@ -1,3 +1,4 @@
+from sqlalchemy import select
 from sqlalchemy.orm import (
     Session,
     joinedload,
@@ -15,8 +16,8 @@ def get_approval_by_id(
 ):
 
     return (
-        db.query(Approval)
-        .filter(Approval.id == approval_id)
+        db.execute(select(Approval).where(Approval.id == approval_id))
+        .scalars()
         .first()
     )
 
@@ -26,16 +27,16 @@ def approvals_query(
     user,
 ):
 
-    query = db.query(Approval)
+    query = select(Approval)
 
     if user.organization_id:
-        query = query.filter(
+        query = query.where(
             Approval.organization_id
             == user.organization_id
         )
 
     if user.role == "employee":
-        query = query.filter(
+        query = query.where(
             Approval.requested_by == user.id
         )
 
@@ -53,8 +54,8 @@ def approval_history_query(
 ):
 
     return (
-        db.query(ApprovalHistory)
-        .filter(
+        select(ApprovalHistory)
+        .where(
             ApprovalHistory.approval_id
             == approval_id
         )
