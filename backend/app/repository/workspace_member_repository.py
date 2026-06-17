@@ -4,7 +4,7 @@ from sqlalchemy import (
     or_,
 )
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.models.workspace_member import (
     WorkspaceMember,
@@ -50,11 +50,11 @@ class WorkspaceMemberRepository:
         workspace_id: int,
         search: str | None = None,
     ):
+
         stmt = (
             select(WorkspaceMember)
-            .join(
-                User,
-                User.id == WorkspaceMember.user_id,
+            .options(
+                joinedload(WorkspaceMember.user)
             )
             .where(
                 WorkspaceMember.workspace_id == workspace_id

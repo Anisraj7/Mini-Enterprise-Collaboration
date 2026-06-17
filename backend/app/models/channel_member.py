@@ -7,6 +7,7 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     ForeignKey,
+    String,
     UniqueConstraint,
     Index,
 )
@@ -18,8 +19,6 @@ from sqlalchemy.orm import (
 )
 
 from app.db.database import Base
-
-
 
 
 class ChannelMember(Base):
@@ -48,6 +47,13 @@ class ChannelMember(Base):
         index=True,
     )
 
+    role: Mapped[str] = mapped_column(
+        String(30),
+        default="MEMBER",
+        nullable=False,
+        index=True,
+    )
+
     joined_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.utcnow,
@@ -64,8 +70,6 @@ class ChannelMember(Base):
         nullable=True,
     )
 
-    # Relationships
-
     channel: Mapped["Channel"] = relationship(
         back_populates="members",
         passive_deletes=True,
@@ -74,6 +78,14 @@ class ChannelMember(Base):
     user: Mapped["User"] = relationship(
         passive_deletes=True,
     )
+
+    @property
+    def user_name(self) -> str | None:
+        return (
+            self.user.name
+            if self.user
+            else None
+        )
 
     __table_args__ = (
         UniqueConstraint(
@@ -90,5 +102,10 @@ class ChannelMember(Base):
             "idx_channel_member_channel_joined",
             "channel_id",
             "joined_at",
+        ),
+        Index(
+            "idx_channel_member_channel_role",
+            "channel_id",
+            "role",
         ),
     )

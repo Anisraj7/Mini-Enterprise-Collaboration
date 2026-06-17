@@ -19,6 +19,7 @@ import API from "../api/axios";
 import { getPageItems } from "../api/pagination";
 import SLABadge from "../components/SLABadge";
 import StatusBadge from "../components/StatusBadge";
+import ApprovalDocuments from "../components/collaboration/approvaldocuments/ApprovalDocuments";
 
 export default function Approval() {
   const navigate = useNavigate();
@@ -187,7 +188,6 @@ export default function Approval() {
 
   return (
     <div className="bg-gradient-to-br from-slate-100 via-indigo-50 to-cyan-50 min-h-screen">
-
       <div className="p-6 max-w-7xl mx-auto">
         {/* HEADER */}
         <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
@@ -434,6 +434,13 @@ export default function Approval() {
                 <div className="flex flex-wrap gap-3 mt-5">
                   {canAct && (
                     <>
+                      <button
+                        onClick={() => setSelectedApproval(approval.id)}
+                        className="
+                        bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-2 rounded-xl text-sm font-medium"
+                      >
+                        Documents
+                      </button>
                       <button
                         onClick={() => handleAction(approval.id, "approve")}
                         className="bg-green-100 hover:bg-green-200 text-green-700 px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition"

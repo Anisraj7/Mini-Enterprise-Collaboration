@@ -12,7 +12,7 @@ from app.models.task import Task
 from app.services.ai_service import generate_ai_summary
 
 from app.repository.dashboard_repository import (
-    visible_tasks_query,
+    TaskRepository,
     approval_query,
     grouped_task_status_query,
     grouped_approval_status_query,
@@ -33,8 +33,7 @@ def summary_service(
     if cached:
         return cached
 
-    query = visible_tasks_query(
-        db,
+    query = TaskRepository.visible_tasks_query(
         user,
     )
 
@@ -93,7 +92,7 @@ def task_distribution_service(
     if cached:
         return cached
 
-    query = visible_tasks_query(
+    query = TaskRepository.visible_tasks_query(
         db,
         user,
     )
@@ -181,7 +180,7 @@ def ai_summary_service(
         return cached
 
     tasks = db.execute(
-        visible_tasks_query(
+        TaskRepository.visible_tasks_query(
             db,
             user,
         )

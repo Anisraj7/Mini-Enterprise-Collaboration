@@ -45,6 +45,12 @@ class Approval(Base):
         Index("idx_approval_status_current_level", "status", "current_level"),
         Index("idx_approval_requested_by_status", "requested_by", "status"),
     )
+    
+    documents = relationship(
+        "ApprovalDocument",
+        back_populates="approval",
+        cascade="all, delete-orphan",
+        )
 
     @property
     def requested_by_name(self):
@@ -88,3 +94,5 @@ class ApprovalHistory(Base):
             if self.escalation_user
             else None
         )
+        
+    

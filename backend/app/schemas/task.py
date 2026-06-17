@@ -1,10 +1,9 @@
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
-
 import bleach
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 
 class TaskStatus(str, Enum):
@@ -113,29 +112,46 @@ class TaskAssign(BaseModel):
 class TaskOut(TaskBase):
     id: int
 
+    organization_id: int
+
+    workspace_id: int
+
+    channel_id: int | None = None
+
     created_by_id: int
 
-    assigned_to_id: Optional[int]
+    assigned_to_id: int | None
 
-    assigned_to_name: Optional[str] = None
+    assigned_to_name: str | None = None
 
-    updated_by: Optional[int] = None
+    updated_by: int | None = None
 
-    document: Optional[str] = None
+    document: str | None = None
 
-    sla_status: Optional[str] = None
+    sla_status: str | None = None
 
-    sla_due_time: Optional[datetime] = None
+    sla_due_time: datetime | None = None
 
     is_sla_breached: bool = False
 
     created_at: datetime
 
     updated_at: datetime
+    
+    workspace_id: int
+    
+    channel_id: int | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(
+        from_attributes=True
+    )
 
 
 class TaskStatusUpdate(BaseModel):
     status: TaskStatus
+
+class WorkspaceTaskCreate(TaskCreate):
+    pass
+
+class ChannelTaskCreate(TaskCreate):
+    pass

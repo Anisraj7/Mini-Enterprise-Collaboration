@@ -8,6 +8,7 @@ from pydantic import (
 
 
 class ChannelMemberResponse(BaseModel):
+
     model_config = ConfigDict(
         from_attributes=True
     )
@@ -18,8 +19,12 @@ class ChannelMemberResponse(BaseModel):
 
     user_id: int
 
+    user_name: str | None = None
+
     joined_at: datetime
 
     is_muted: bool
 
     last_read_message_id: Optional[int]
+
+    role: str

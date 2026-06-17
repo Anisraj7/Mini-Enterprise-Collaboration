@@ -28,17 +28,9 @@ from app.services.notification_service import (
 from app.services.event_log_service import record_event
 from app.services.sla_tracking_service import SLATrackingService
 
-
-from app.repository.task_repository import (
-    get_task_by_id,
-    visible_tasks_query,
-    assignable_users_query,
-    create_task_repository,
-    update_task_repository,
-    delete_task_repository,
-    commit_refresh,
-)
-
+from app.repository.channel_member_repository import ChannelMemberRepository
+from app.repository.workspace_member_repository import WorkspaceMemberRepository
+from app.repository.task_repository import TaskRepository
 from sqlalchemy import func, select
 
 
@@ -108,7 +100,7 @@ def can_access_task(task: Task, user: User):
 
 def get_task_or_404(db: Session, task_id: int):
 
-    task = get_task_by_id(db, task_id)
+    task = TaskRepository.get_by_id(db, task_id)
 
     if not task:
         raise HTTPException(
@@ -183,7 +175,48 @@ def create_task_service(
     db: Session,
     current_user: User,
     task: TaskCreate,
+    workspace_id: int,
+    channel_id: int | None = None,
 ):
+
+    workspace_member = (
+        WorkspaceMemberRepository.get_member(
+            db,
+            workspace_id,
+            current_user.id,
+        )
+    )
+
+    if not workspace_member:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not a workspace member",
+        )
+
+    if workspace_member.role not in (
+        "WORKSPACE_ADMIN",
+        "MANAGER",
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to create tasks",
+        )
+
+    if channel_id:
+
+        channel_member = (
+            ChannelMemberRepository.get_member(
+                db,
+                channel_id,
+                current_user.id,
+            )
+        )
+
+        if not channel_member:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not a channel member",
+            )
 
     if task.assigned_to_id:
 
@@ -194,12 +227,45 @@ def create_task_service(
 
         if (
             current_user.organization_id
-            and assigned_user.organization_id != current_user.organization_id
+            and assigned_user.organization_id
+            != current_user.organization_id
         ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Cannot assign outside organization",
             )
+
+        if channel_id:
+
+            assignee_member = (
+                ChannelMemberRepository.get_member(
+                    db,
+                    channel_id,
+                    task.assigned_to_id,
+                )
+            )
+
+            if not assignee_member:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Assignee must belong to channel",
+                )
+
+        else:
+
+            assignee_member = (
+                WorkspaceMemberRepository.get_member(
+                    db,
+                    workspace_id,
+                    task.assigned_to_id,
+                )
+            )
+
+            if not assignee_member:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Assignee must belong to workspace",
+                )
 
     new_task = Task(
         title=task.title,
@@ -211,21 +277,32 @@ def create_task_service(
         assigned_to_id=task.assigned_to_id,
         updated_by=current_user.id,
         organization_id=current_user.organization_id,
+        workspace_id=workspace_id,
+        channel_id=channel_id,
     )
 
-    create_task_repository(db, new_task)
+    TaskRepository.create(
+        db,
+        new_task,
+    )
 
     try:
+
         SLATrackingService.start_sla_tracking(
             db,
             "Task",
             new_task.id,
             new_task.priority,
         )
+
         db.refresh(new_task)
 
     except HTTPException as e:
-        print("SLA ERROR:", e.detail)
+
+        print(
+            "SLA ERROR:",
+            e.detail,
+        )
 
     record_event(
         db,
@@ -237,6 +314,7 @@ def create_task_service(
     )
 
     if new_task.assigned_to_id:
+
         create_notification(
             db,
             new_task.assigned_to_id,
@@ -244,12 +322,18 @@ def create_task_service(
             current_user.organization_id,
         )
 
-    commit_refresh(db, new_task)
+    TaskRepository.commit_refresh(
+        db,
+        new_task,
+    )
 
     invalidate_read_caches()
 
     dispatch_kanban_update(
-        workspace_user_ids(db, current_user)
+        workspace_user_ids(
+            db,
+            current_user,
+        )
     )
 
     return new_task
@@ -312,7 +396,7 @@ def create_task_with_document_service(
         organization_id=current_user.organization_id,
     )
 
-    create_task_repository(db, new_task)
+    TaskRepository.create(db, new_task)
 
     try:
         SLATrackingService.start_sla_tracking(
@@ -326,7 +410,7 @@ def create_task_with_document_service(
     except HTTPException as e:
         print("SLA ERROR:", e.detail)
 
-    commit_refresh(db, new_task)
+    TaskRepository.commit_refresh(db, new_task)
 
     invalidate_read_caches()
 
@@ -342,8 +426,7 @@ def list_tasks_service(
     current_user: User,
 ):
 
-    query = visible_tasks_query(
-        db,
+    query = TaskRepository.visible_tasks_query(
         current_user,
     )
 
@@ -400,7 +483,7 @@ def kanban_service(
     }
 
     tasks = db.execute(
-        visible_tasks_query(db, current_user)
+        TaskRepository.visible_tasks_query(current_user)
         .order_by(Task.updated_at.desc())
     ).scalars().all()
 
@@ -436,7 +519,7 @@ def recommendation_service(
     current_user: User,
 ):
 
-    candidates = db.execute(assignable_users_query(
+    candidates = db.execute(TaskRepository.assignable_users_query(
         db,
         current_user,
     )).scalars().all()
@@ -531,11 +614,11 @@ def update_task_service(
 
     task.updated_by = current_user.id
 
-    update_task_repository(db, task)
+    TaskRepository.update(db, task)
 
-    commit_refresh(db, task)
+    TaskRepository.commit_refresh(db, task)
 
-    invalidate_read_caches()
+    TaskRepository.invalidate_read_caches()
 
     dispatch_kanban_update(
         workspace_user_ids(db, current_user)
@@ -560,7 +643,7 @@ def update_task_status_service(
         db,
     )
 
-    update_task_repository(db, task)
+    TaskRepository.update(db, task)
 
     if task.status == "done":
         try:
@@ -571,7 +654,7 @@ def update_task_status_service(
         except HTTPException:
             pass
 
-    commit_refresh(db, task)
+    TaskRepository.commit_refresh(db, task)
 
     invalidate_read_caches()
 
@@ -585,7 +668,10 @@ def assign_task_service(
     assignment: TaskAssign,
 ):
 
-    task = get_task_or_404(db, task_id)
+    task = get_task_or_404(
+        db,
+        task_id,
+    )
 
     assigned_user = ensure_user_exists(
         db,
@@ -594,18 +680,56 @@ def assign_task_service(
 
     if (
         current_user.organization_id
-        and assigned_user.organization_id != current_user.organization_id
+        and assigned_user.organization_id
+        != current_user.organization_id
     ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Cannot assign outside organization",
         )
 
-    task.assigned_to_id = assignment.assigned_to_id
+    if task.channel_id:
+
+        assignee_member = (
+            ChannelMemberRepository.get_member(
+                db,
+                task.channel_id,
+                assignment.assigned_to_id,
+            )
+        )
+
+        if not assignee_member:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Assignee must belong to channel",
+            )
+
+    else:
+
+        assignee_member = (
+            WorkspaceMemberRepository.get_member(
+                db,
+                task.workspace_id,
+                assignment.assigned_to_id,
+            )
+        )
+
+        if not assignee_member:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Assignee must belong to workspace",
+            )
+
+    task.assigned_to_id = (
+        assignment.assigned_to_id
+    )
 
     task.updated_by = current_user.id
 
-    update_task_repository(db, task)
+    TaskRepository.update(
+        db,
+        task,
+    )
 
     create_notification(
         db,
@@ -614,7 +738,10 @@ def assign_task_service(
         current_user.organization_id,
     )
 
-    commit_refresh(db, task)
+    TaskRepository.commit_refresh(
+        db,
+        task,
+    )
 
     invalidate_read_caches()
 
@@ -638,9 +765,9 @@ def smart_assign_task_service(
 
     task.updated_by = current_user.id
 
-    update_task_repository(db, task)
+    TaskRepository.update(db, task)
 
-    commit_refresh(db, task)
+    TaskRepository.commit_refresh(db, task)
 
     invalidate_read_caches()
 
@@ -655,7 +782,7 @@ def delete_task_service(
 
     task = get_task_or_404(db, task_id)
 
-    delete_task_repository(db, task)
+    TaskRepository.delete(db, task)
 
     db.commit()
 

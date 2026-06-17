@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.models.approval import Approval
 from app.models.task import Task
 
-from app.repository.task_repository import visible_tasks_query
+from app.repository.task_repository import TaskRepository
 
 
 def approval_query(

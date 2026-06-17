@@ -46,6 +46,7 @@ from app.routers import (
     workspace,
     workspace_member,
 )
+from app.routers import approval_document, channel_message, channel_task, task_document, workspace_message, workspace_task
 
 logging.basicConfig(
     level=logging.INFO,
@@ -140,6 +141,30 @@ app.include_router(
     channel_member.router,
     prefix="/channels",
     tags=["Channel Members"]
+)
+
+app.include_router(
+    workspace_message.router
+)
+
+app.include_router(
+    channel_message.router
+)
+
+app.include_router(
+    task_document.router
+)
+
+app.include_router(
+    approval_document.router
+)
+
+app.include_router(
+    workspace_task.router
+)
+
+app.include_router(
+    channel_task.router
 )
 
 add_pagination(app)

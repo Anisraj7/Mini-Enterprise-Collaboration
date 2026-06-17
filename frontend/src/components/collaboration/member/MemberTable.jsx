@@ -37,11 +37,11 @@ export default function MemberTable({
               className="border-t"
             >
               <td className="px-4 py-3">
-                {member.user?.name || "Unknown"}
+                {member.user_name || "Unknown"}
               </td>
 
               <td className="px-4 py-3">
-                {member.user?.email || "-"}
+                {member.user_email || "-"}
               </td>
 
               <td className="px-4 py-3">

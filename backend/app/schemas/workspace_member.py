@@ -61,18 +61,18 @@ class WorkspaceMemberRoleUpdate(BaseModel):
 
 
 class WorkspaceMemberResponse(BaseModel):
+
     model_config = ConfigDict(
         from_attributes=True
     )
 
     id: int
-
     workspace_id: int
-
     user_id: int
 
+    user_name: str | None = None
+    user_email: str | None = None
+
     role: str
-
     joined_at: datetime
-
     is_active: bool

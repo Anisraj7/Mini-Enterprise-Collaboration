@@ -29,7 +29,7 @@ from app.models.activity_log import ActivityLog
 from app.models.document import Document
 from app.models.audit_log import AuditLog
 from app.models.notification import Notification
-from backend.app.models.organization import Organization
+from app.models.organization import Organization
 from app.models.tenant_onboarding import TenantOnboarding
 from app.models.tenant_collab_settings import (
     TenantCollaborationSettings

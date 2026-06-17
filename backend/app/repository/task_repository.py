@@ -1,131 +1,263 @@
-from sqlalchemy import or_, select
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import (
+    or_,
+    select,
+)
+
+from sqlalchemy.orm import (
+    Session,
+    joinedload,
+)
+
+from fastapi_pagination.ext.sqlalchemy import paginate
 
 from app.models.task import Task
 from app.models.user import User
 
 
-def get_task_by_id(
-    db: Session,
-    task_id: int,
-):
-    return (
-        db.execute(
-            select(Task)
-        .options(
-            joinedload(
-                Task.assigned_to
+class TaskRepository:
+
+    @staticmethod
+    def get_by_id(
+        db: Session,
+        task_id: int,
+    ) -> Task | None:
+
+        return (
+            db.execute(
+                select(Task)
+                .options(
+                    joinedload(
+                        Task.assigned_to
+                    )
+                )
+                .where(
+                    Task.id == task_id
+                )
             )
-        )
-        .where(
-            Task.id == task_id
-        )
-        )
-        .scalars()
-        .first()
-    )
-
-
-def get_tasks_query(
-    db: Session,
-):
-    return select(Task)
-
-
-def visible_tasks_query(
-    db: Session,
-    user: User,
-):
-    query = select(Task)
-
-    if user.organization_id:
-        query = query.where(
-            Task.organization_id
-            == user.organization_id
+            .scalars()
+            .first()
         )
 
-    if user.role in (
-        "super_admin",
-        "organization_admin",
-        "workspace_admin",
+    @staticmethod
+    def visible_tasks_query(
+        user: User,
     ):
-        return query
 
-    if user.role == "manager":
-        return query.where(
-            or_(
-                Task.created_by_id == user.id,
-                Task.assigned_to_id == user.id,
+        stmt = select(Task)
+
+        if user.organization_id:
+
+            stmt = stmt.where(
+                Task.organization_id
+                == user.organization_id
+            )
+
+        if user.role in (
+            "SUPER_ADMIN",
+            "ORGANIZATION_ADMIN",
+            "WORKSPACE_ADMIN",
+        ):
+            return stmt
+
+        if user.role == "MANAGER":
+
+            return stmt.where(
+                or_(
+                    Task.created_by_id == user.id,
+                    Task.assigned_to_id == user.id,
+                )
+            )
+
+        return stmt.where(
+            Task.assigned_to_id
+            == user.id
+        )
+
+    @staticmethod
+    def list_workspace_tasks(
+        db: Session,
+        workspace_id: int,
+    ):
+
+        stmt = (
+            select(Task)
+            .where(
+                Task.workspace_id
+                == workspace_id
+            )
+            .order_by(
+                Task.created_at.desc()
             )
         )
 
-    return query.where(
-        Task.assigned_to_id == user.id
-    )
-
-
-def assignable_users_query(
-    db: Session,
-    user: User,
-):
-    query = select(User).where(
-        User.is_active.is_(True)
-    )
-
-    if user.organization_id:
-        query = query.where(
-            User.organization_id
-            == user.organization_id
+        return paginate(
+            db,
+            stmt,
         )
 
-    if user.role == "manager":
-        query = query.where(
-            User.role.in_(
-                [
-                    "manager",
-                    "employee",
-                ]
+    @staticmethod
+    def list_channel_tasks(
+        db: Session,
+        channel_id: int,
+    ):
+
+        stmt = (
+            select(Task)
+            .where(
+                Task.channel_id
+                == channel_id
+            )
+            .order_by(
+                Task.created_at.desc()
             )
         )
 
-    return query
+        return paginate(
+            db,
+            stmt,
+        )
 
+    @staticmethod
+    def get_workspace_task(
+        db: Session,
+        workspace_id: int,
+        task_id: int,
+    ) -> Task | None:
 
-def create_task_repository(
-    db: Session,
-    task: Task,
-):
-    db.add(task)
+        return (
+            db.execute(
+                select(Task)
+                .where(
+                    Task.workspace_id
+                    == workspace_id
+                )
+                .where(
+                    Task.id == task_id
+                )
+            )
+            .scalar_one_or_none()
+        )
 
-    db.flush()
+    @staticmethod
+    def get_channel_task(
+        db: Session,
+        channel_id: int,
+        task_id: int,
+    ) -> Task | None:
 
-    return task
+        return (
+            db.execute(
+                select(Task)
+                .where(
+                    Task.channel_id
+                    == channel_id
+                )
+                .where(
+                    Task.id == task_id
+                )
+            )
+            .scalar_one_or_none()
+        )
 
+    @staticmethod
+    def create(
+        db: Session,
+        task: Task,
+    ) -> Task:
 
-def update_task_repository(
-    db: Session,
-    task: Task,
-):
-    db.add(task)
+        db.add(task)
 
-    return task
+        db.commit()
 
+        db.refresh(task)
 
-def delete_task_repository(
-    db: Session,
-    task: Task,
-):
-    db.delete(task)
+        return task
 
-    return True
+    @staticmethod
+    def update(
+        db: Session,
+        task: Task,
+    ) -> Task:
 
+        db.add(task)
 
-def commit_refresh(
-    db: Session,
-    task: Task,
-):
-    db.commit()
+        db.commit()
 
-    db.refresh(task)
+        db.refresh(task)
 
-    return task
+        return task
+
+    @staticmethod
+    def assign_task(
+        db: Session,
+        task: Task,
+        assigned_to_id: int,
+    ) -> Task:
+
+        task.assigned_to_id = assigned_to_id
+
+        db.add(task)
+
+        db.commit()
+
+        db.refresh(task)
+
+        return task
+
+    @staticmethod
+    def delete(
+        db: Session,
+        task: Task,
+    ) -> bool:
+
+        db.delete(task)
+
+        db.commit()
+
+        return True
+
+    @staticmethod
+    def list_assignable_users(
+        db: Session,
+        user: User,
+    ):
+
+        stmt = select(User).where(
+            User.is_active.is_(True)
+        )
+
+        if user.organization_id:
+
+            stmt = stmt.where(
+                User.organization_id
+                == user.organization_id
+            )
+
+        if user.role == "MANAGER":
+
+            stmt = stmt.where(
+                User.role.in_(
+                    [
+                        "MANAGER",
+                        "EMPLOYEE",
+                    ]
+                )
+            )
+
+        return (
+            db.execute(stmt)
+            .scalars()
+            .all()
+        )
+        
+    @staticmethod
+    def commit_refresh(
+        db: Session,
+        task: Task,
+    ) -> Task:
+
+        db.commit()
+
+        db.refresh(task)
+
+        return task

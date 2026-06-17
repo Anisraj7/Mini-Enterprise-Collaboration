@@ -1,7 +1,22 @@
-from typing import Any
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, Index
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from __future__ import annotations
+
 from datetime import datetime
+
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+)
+
+from sqlalchemy.orm import (
+    Mapped,
+    mapped_column,
+    relationship,
+)
 
 from app.db.database import Base
 
@@ -9,80 +24,232 @@ from app.db.database import Base
 class Task(Base):
     __tablename__ = "tasks"
 
-    id: Mapped[Any] = mapped_column(Integer, primary_key=True, index=True)
-
-    title: Mapped[Any] = mapped_column(String(200), nullable=False)
-
-    description: Mapped[Any] = mapped_column(String(1000), nullable=True)
-
-    status: Mapped[Any] = mapped_column(
-        Enum("todo", "in_progress", "review", "done", name="task_status"),
-        default="todo",
-        nullable=False,
-        index=True
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        index=True,
     )
 
-    priority: Mapped[Any] = mapped_column(String(20), default="medium", nullable=False, index=True)
+    title: Mapped[str] = mapped_column(
+        String(200),
+        nullable=False,
+    )
 
-    due_date: Mapped[Any] = mapped_column(DateTime, nullable=True, index=True)
+    description: Mapped[str | None] = mapped_column(
+        String(1000),
+        nullable=True,
+    )
 
-    created_by_id: Mapped[Any] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(
+        Enum(
+            "todo",
+            "in_progress",
+            "review",
+            "done",
+            name="task_status",
+        ),
+        default="todo",
+        nullable=False,
+        index=True,
+    )
 
-    assigned_to_id: Mapped[Any] = mapped_column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    priority: Mapped[str] = mapped_column(
+        String(20),
+        default="medium",
+        nullable=False,
+        index=True,
+    )
 
-    updated_by: Mapped[Any] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
+    due_date: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True,
+        index=True,
+    )
 
-    organization_id: Mapped[Any] = mapped_column(Integer, ForeignKey("organizations.id"), nullable=True, index=True)
+    created_by_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id"),
+        nullable=False,
+        index=True,
+    )
 
-    created_at: Mapped[Any] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    assigned_to_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id"),
+        nullable=True,
+        index=True,
+    )
 
-    updated_at: Mapped[Any] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, index=True)
+    updated_by: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id"),
+        nullable=True,
+    )
 
-    document: Mapped[Any] = mapped_column(String, nullable=True)
+    organization_id: Mapped[int] = mapped_column(
+        ForeignKey("organizations.id"),
+        nullable=False,
+        index=True,
+    )
 
-    sla_status: Mapped[Any] = mapped_column(String(50), nullable=True, index=True)
+    workspace_id: Mapped[int] = mapped_column(
+        ForeignKey("workspaces.id"),
+        nullable=False,
+        index=True,
+    )
 
-    sla_due_time: Mapped[Any] = mapped_column(DateTime, nullable=True, index=True)
+    channel_id: Mapped[int | None] = mapped_column(
+        ForeignKey("channels.id"),
+        nullable=True,
+        index=True,
+    )
 
-    is_sla_breached: Mapped[Any] = mapped_column(Boolean, default=False, nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        nullable=False,
+        index=True,
+    )
 
-    created_by = relationship("User", foreign_keys=[created_by_id])
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+        index=True,
+    )
 
-    assigned_to = relationship("User", foreign_keys=[assigned_to_id])
+    document: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
+    )
 
-    updated_by_user = relationship("User", foreign_keys=[updated_by])
+    sla_status: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+        index=True,
+    )
+
+    sla_due_time: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True,
+        index=True,
+    )
+
+    is_sla_breached: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
+        index=True,
+    )
+
+    # Relationships
+
+    created_by = relationship(
+        "User",
+        foreign_keys=[created_by_id],
+    )
+
+    assigned_to = relationship(
+        "User",
+        foreign_keys=[assigned_to_id],
+    )
+
+    updated_by_user = relationship(
+        "User",
+        foreign_keys=[updated_by],
+    )
+
+    organization = relationship(
+        "Organization",
+    )
+
+    workspace = relationship(
+        "Workspace",
+    )
+
+    channel = relationship(
+        "Channel",
+    )
 
     __table_args__ = (
-        Index("idx_task_status_updated_at", "status", "updated_at"),
-        Index("idx_task_assigned_to_status", "assigned_to_id", "status"),
-        Index("idx_task_created_by_status", "created_by_id", "status"),
-        Index("idx_task_due_date", "due_date"),
+        Index(
+            "idx_task_status_updated_at",
+            "status",
+            "updated_at",
+        ),
+        Index(
+            "idx_task_assigned_to_status",
+            "assigned_to_id",
+            "status",
+        ),
+        Index(
+            "idx_task_created_by_status",
+            "created_by_id",
+            "status",
+        ),
+        Index(
+            "idx_task_due_date",
+            "due_date",
+        ),
     )
 
     @property
-    def assigned_to_name(self):
-        return self.assigned_to.name if self.assigned_to else None
+    def assigned_to_name(self) -> str | None:
+        return (
+            self.assigned_to.name
+            if self.assigned_to
+            else None
+        )
 
 
 class TaskHistory(Base):
     __tablename__ = "task_history"
 
-    id: Mapped[Any] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        index=True,
+    )
 
-    task_id: Mapped[Any] = mapped_column(Integer, ForeignKey("tasks.id"), nullable=False, index=True)
+    task_id: Mapped[int] = mapped_column(
+        ForeignKey("tasks.id"),
+        nullable=False,
+        index=True,
+    )
 
-    old_status: Mapped[Any] = mapped_column(String, nullable=False)
+    old_status: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+    )
 
-    new_status: Mapped[Any] = mapped_column(String, nullable=False)
+    new_status: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+    )
 
-    changed_by: Mapped[Any] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    changed_by: Mapped[int] = mapped_column(
+        ForeignKey("users.id"),
+        nullable=False,
+        index=True,
+    )
 
-    changed_at: Mapped[Any] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    changed_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        nullable=False,
+        index=True,
+    )
 
-    task = relationship("Task")
+    task = relationship(
+        "Task",
+    )
 
-    user = relationship("User")
+    user = relationship(
+        "User",
+    )
 
     __table_args__ = (
-        Index("idx_task_history_task_id_changed_at", "task_id", "changed_at"),
+        Index(
+            "idx_task_history_task_id_changed_at",
+            "task_id",
+            "changed_at",
+        ),
     )

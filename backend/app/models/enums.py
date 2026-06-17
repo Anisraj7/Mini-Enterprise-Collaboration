@@ -12,3 +12,12 @@ class UserRole(str, Enum):
     MANAGER = "manager"
 
     EMPLOYEE = "employee"
+    
+
+class WorkspaceMemberRole(str, Enum):
+    ADMIN = "ADMIN"
+    MEMBER = "MEMBER"
+    
+class ChannelMemberRole(str, Enum):
+    MODERATOR = "MODERATOR"
+    MEMBER = "MEMBER"

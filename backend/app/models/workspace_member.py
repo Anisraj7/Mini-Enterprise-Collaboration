@@ -48,7 +48,7 @@ class WorkspaceMember(Base):
 
     role: Mapped[str] = mapped_column(
         String(30),
-        default="EMPLOYEE",
+        default="MEMBER",
         nullable=False,
         index=True,
     )
@@ -76,6 +76,14 @@ class WorkspaceMember(Base):
     user: Mapped["User"] = relationship(
         passive_deletes=True,
     )
+    
+    @property
+    def user_name(self):
+        return self.user.name if self.user else None
+
+    @property
+    def user_email(self):
+        return self.user.email if self.user else None
 
     __table_args__ = (
         UniqueConstraint(
