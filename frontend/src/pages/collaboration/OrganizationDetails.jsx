@@ -167,7 +167,9 @@ export default function OrganizationDetails() {
                   </button>
                 )}
 
-                {currentUser?.role === "super_admin" && (
+                {["super_admin", "organization_admin"].includes(
+                  currentUser?.role,
+                ) && (
                   <button
                     onClick={handleEdit}
                     className="bg-blue-600 text-white px-4 py-2 rounded-lg"
@@ -300,14 +302,14 @@ export default function OrganizationDetails() {
       </div>
 
       {/* Future Sections */}
-      <div className="bg-white border rounded-xl p-6">
+      {/* <div className="bg-white border rounded-xl p-6">
         <h2 className="text-xl font-semibold mb-2">Phase 10A</h2>
 
         <p className="text-gray-500">
           Collaboration Settings, Usage Statistics, Workspaces and Channels will
           be linked here.
         </p>
-      </div>
+      </div> */}
     </div>
   );
 }

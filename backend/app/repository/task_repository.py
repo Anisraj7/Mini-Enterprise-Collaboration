@@ -14,6 +14,7 @@ from app.models.task import Task
 from app.models.user import User
 
 
+
 class TaskRepository:
 
     @staticmethod
@@ -261,3 +262,32 @@ class TaskRepository:
         db.refresh(task)
 
         return task
+    
+
+    @staticmethod
+    def get_by_team(
+        db: Session,
+        team_id: int
+    ) -> list[Task]:
+        return (
+            db.query(Task)
+            .filter(
+                Task.team_id == team_id
+            )
+            .all()
+        )
+        
+    @staticmethod
+    def get_by_project(
+        db: Session,
+        organization_id: int,
+        project_id: int
+    ) -> list[Task]:
+        return (
+            db.query(Task)
+            .filter(
+                Task.organization_id == organization_id,
+                Task.project_id == project_id
+            )
+            .all()
+        )

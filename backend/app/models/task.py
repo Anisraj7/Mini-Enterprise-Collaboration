@@ -168,6 +168,24 @@ class Task(Base):
     channel = relationship(
         "Channel",
     )
+    
+    project_id: Mapped[int | None] = mapped_column(
+        ForeignKey("projects.id"),
+        nullable=True,
+        index=True
+    )
+
+    team_id: Mapped[int | None] = mapped_column(
+        ForeignKey("teams.id"),
+        nullable=True,
+        index=True
+    )
+    
+    organization_id: Mapped[int] = mapped_column(
+        ForeignKey("organizations.id"),
+        nullable=False,
+        index=True
+    )
 
     __table_args__ = (
         Index(

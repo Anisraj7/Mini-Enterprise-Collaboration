@@ -7,12 +7,7 @@ export default function NavMenu({ user }) {
     {
       label: "Dashboard",
       path: "/dashboard",
-      roles: [
-        "organization_admin",
-        "workspace_admin",
-        "manager",
-        "employee",
-      ],
+      roles: ["organization_admin", "workspace_admin", "manager", "employee"],
     },
 
     {
@@ -30,11 +25,7 @@ export default function NavMenu({ user }) {
     {
       label: "Users",
       path: "/organization-users",
-      roles: [
-        "super_admin",
-        "organization_admin",
-        "workspace_admin",
-      ],
+      roles: ["super_admin", "organization_admin", "workspace_admin"],
     },
 
     {
@@ -42,70 +33,37 @@ export default function NavMenu({ user }) {
       path: "/workspaces",
       roles: ["organization_admin"],
     },
-
-    {
-      label: "Activity",
-      path: "/activity",
-      roles: [
-        "organization_admin",
-        "workspace_admin",
-        "manager",
-        "employee",
-      ],
-    },
-
-    {
-      label: "Audit Logs",
-      path: "/admin/audit-logs",
-      roles: [
-        "organization_admin",
-        "workspace_admin",
-        "manager",
-      ],
-    },
-
-    {
-      label: "SLA Dashboard",
-      path: "/dashboard/sla",
-      roles: [
-        "organization_admin",
-        "workspace_admin",
-        "manager",
-      ],
-    },
-
-    {
-      label: "SLA Rules",
-      path: "/admin/sla-rules",
-      roles: [
-        "organization_admin",
-        "workspace_admin",
-        "manager",
-      ],
-    },
   ];
 
   const visibleItems = menuItems.filter(
-    (item) => user && item.roles.includes(user.role)
+    (item) => user && item.roles.includes(user.role),
   );
 
   const canAccessTasks =
     user &&
-    [
-      "organization_admin",
-      "workspace_admin",
-      "manager",
-      "employee",
-    ].includes(user.role);
+    ["organization_admin", "workspace_admin", "manager", "employee"].includes(
+      user.role,
+    );
 
   const canAccessApprovals =
     user &&
-    [
-      "organization_admin",
-      "workspace_admin",
-      "manager",
-      "employee",
-    ].includes(user.role);
+    ["organization_admin", "workspace_admin", "manager", "employee"].includes(
+      user.role,
+    );
+
+  const canAccessLogs =
+    user &&
+    ["organization_admin", "workspace_admin", "manager"].includes(user.role);
+
+  const canAccessSLA =
+    user &&
+    ["organization_admin", "workspace_admin", "manager"].includes(user.role);
+
+  const canAccessCollaboration =
+    user &&
+    ["organization_admin", "workspace_admin", "manager", "employee"].includes(
+      user.role,
+    );
 
   return (
     <div className="flex items-center gap-5">
@@ -187,6 +145,102 @@ export default function NavMenu({ user }) {
               className="block px-4 py-3 text-sm text-slate-300 hover:bg-slate-800"
             >
               Notification Preferences
+            </NavLink>
+          </div>
+        </div>
+      )}
+
+      {/* Logs Dropdown */}
+      {canAccessLogs && (
+        <div className="relative group">
+          <button className="text-sm font-medium text-slate-300 hover:text-cyan-400 transition-colors">
+            Logs
+          </button>
+
+          <div className="absolute left-0 top-full hidden group-hover:block bg-slate-900 border border-slate-700 rounded-lg shadow-lg min-w-[220px] z-50">
+            <NavLink
+              to="/activity"
+              className="block px-4 py-3 text-sm text-slate-300 hover:bg-slate-800"
+            >
+              Activity
+            </NavLink>
+
+            <NavLink
+              to="/admin/audit-logs"
+              className="block px-4 py-3 text-sm text-slate-300 hover:bg-slate-800"
+            >
+              Audit Logs
+            </NavLink>
+          </div>
+        </div>
+      )}
+
+      {/* SLA Dropdown */}
+      {canAccessSLA && (
+        <div className="relative group">
+          <button className="text-sm font-medium text-slate-300 hover:text-cyan-400 transition-colors">
+            SLA
+          </button>
+
+          <div className="absolute left-0 top-full hidden group-hover:block bg-slate-900 border border-slate-700 rounded-lg shadow-lg min-w-[220px] z-50">
+            <NavLink
+              to="/dashboard/sla"
+              className="block px-4 py-3 text-sm text-slate-300 hover:bg-slate-800"
+            >
+              SLA Dashboard
+            </NavLink>
+
+            <NavLink
+              to="/admin/sla-rules"
+              className="block px-4 py-3 text-sm text-slate-300 hover:bg-slate-800"
+            >
+              SLA Rules
+            </NavLink>
+          </div>
+        </div>
+      )}
+
+      {/* Collaboration Dropdown */}
+      {canAccessCollaboration && (
+        <div className="relative group">
+          <button className="text-sm font-medium text-slate-300 hover:text-cyan-400 transition-colors">
+            Collaboration
+          </button>
+
+          <div className="absolute left-0 top-full hidden group-hover:block bg-slate-900 border border-slate-700 rounded-lg shadow-lg min-w-[220px] z-50">
+            <NavLink
+              to="/teams"
+              className="block px-4 py-3 text-sm text-slate-300 hover:bg-slate-800"
+            >
+              Teams
+            </NavLink>
+
+            <NavLink
+              to="/projects"
+              className="block px-4 py-3 text-sm text-slate-300 hover:bg-slate-800"
+            >
+              Projects
+            </NavLink>
+
+            <NavLink
+              to="/meetings"
+              className="block px-4 py-3 text-sm text-slate-300 hover:bg-slate-800"
+            >
+              Meetings
+            </NavLink>
+
+            <NavLink
+              to="/calendar"
+              className="block px-4 py-3 text-sm text-slate-300 hover:bg-slate-800"
+            >
+              Project Calendar
+            </NavLink>
+
+            <NavLink
+              to="/workload"
+              className="block px-4 py-3 text-sm text-slate-300 hover:bg-slate-800"
+            >
+              Workload Dashboard
             </NavLink>
           </div>
         </div>

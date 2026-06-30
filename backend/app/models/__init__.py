@@ -2,6 +2,7 @@ from app.models.activity_log import ActivityLog
 from app.models.approval import Approval, ApprovalHistory
 from app.models.approval_delegation import ApprovalDelegation
 from app.models.approval_escalation import ApprovalEscalation
+from app.models.approval_document import ApprovalDocument
 from app.models.audit_log import AuditLog
 from app.models.channel import Channel
 from app.models.channel_member import ChannelMember
@@ -22,3 +23,12 @@ from app.models.tenant_onboarding import TenantOnboarding
 from app.models.user import User
 from app.models.workspace import Workspace
 from app.models.workspace_member import WorkspaceMember
+from app.models.project import Project
+from app.models.team import Team
+from app.models.team_member import TeamMember
+from app.models.project_team import ProjectTeam
+from app.models.project_document import ProjectDocument
+from app.models.meeting import Meeting
+from app.models.meeting_attendee import MeetingAttendee
+from app.models.meeting_note import MeetingNote
+from app.models.ai_meeting_summary import AIMeetingSummary

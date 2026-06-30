@@ -47,6 +47,7 @@ MANAGEMENT_ROLES = [
     response_model=TaskOut,
 )
 def create_task(
+    workspace_id:int,
     task: TaskCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(
@@ -57,6 +58,7 @@ def create_task(
         db,
         current_user,
         task,
+        workspace_id,
     )
 
 

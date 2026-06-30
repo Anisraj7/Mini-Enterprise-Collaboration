@@ -39,6 +39,18 @@ import Organizations from "./pages/collaboration/Organizations";
 import OrganizationDetails from "./pages/collaboration/OrganizationDetails";
 import OrganizationUsers from "./pages/collaboration/OrganizationUsers";
 
+import Teams from "./pages/collaboration/Teams";
+import TeamDetails from "./pages/collaboration/TeamDetails";
+
+import Projects from "./pages/collaboration/Projects";
+import ProjectDetails from "./pages/collaboration/ProjectDetails";
+
+import Meetings from "./pages/collaboration/Meetings";
+import MeetingDetails from "./pages/collaboration/MeetingDetails";
+
+import ProjectCalendar from "./pages/collaboration/ProjectCalendar";
+import WorkloadDashboard from "./pages/collaboration/WorkloadDashboard";
+
 function App() {
   return (
     <BrowserRouter>
@@ -140,9 +152,37 @@ function App() {
           <Route path="/channels/:channelId" element={<ChannelDetails />} />
 
           <Route path="/organization-users" element={<OrganizationUsers />} />
-        </Route>
+        
+            {/* TEAMS MEETING ANDD PROJECTS */}
 
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
+
+        <Route path="/teams" element={<Teams />} />
+
+        <Route path="/teams/:teamId" element={<TeamDetails />} />
+
+        <Route path="/teams/:teamId/workload" element={<WorkloadDashboard />} />
+
+        <Route path="/projects" element={<Projects />} />
+
+        <Route path="/projects/:projectId" element={<ProjectDetails />} />
+
+        <Route
+          path="/projects/:projectId/calendar"
+          element={<ProjectCalendar />}
+        />
+
+        <Route
+          path="/projects/:projectId/workload"
+          element={<WorkloadDashboard />}
+        />
+
+        <Route path="/meetings" element={<Meetings />} />
+
+        <Route path="/meetings/:meetingId" element={<MeetingDetails />} />
+        </Route>
+
+
       </Routes>
     </BrowserRouter>
   );

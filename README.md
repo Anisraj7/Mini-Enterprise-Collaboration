@@ -30,81 +30,198 @@ Frontend:
 
 ```text
 Mini Enterprise Collaboration/
-├── README.md
-├── .gitignore
-├── uploads/
-├── backend/
-│   ├── requirements.txt
-│   ├── alembic.ini
-│   ├── .env.example
-│   ├── alembic/
-│   │   ├── env.py
-│   │   ├── script.py.mako
-│   │   └── versions/
-│   │       └── database migration files
-│   └── app/
-│       ├── main.py
-│       ├── core/
-│       │   ├── config.py
-│       │   ├── security.py
-│       │   ├── dependencies.py
-│       │   ├── permissions.py
-│       │   ├── rate_limit.py
-│       │   ├── cache.py
-│       │   └── celery_app.py
-│       ├── db/
-│       │   └── database.py
-│       ├── models/
-│       │   └── SQLAlchemy database models
-│       ├── schemas/
-│       │   └── Pydantic request/response schemas
-│       ├── repository/
-│       │   └── Database access layer
-│       ├── services/
-│       │   └── Business logic layer
-│       ├── routers/
-│       │   └── FastAPI route handlers
-│       ├── middleware/
-│       │   └── audit_middleware.py
-│       ├── tasks/
-│       │   └── Celery/background tasks
-│       └── utils/
-│           └── credits.py
-└── frontend/
-    ├── package.json
-    ├── vite.config.js
-    ├── tailwind.config.js
-    ├── index.html
-    ├── public/
-    │   ├── favicon.svg
-    │   └── icons.svg
-    └── src/
-        ├── main.jsx
-        ├── App.jsx
-        ├── index.css
-        ├── api/
-        │   ├── axios.js
-        │   ├── pagination.js
-        │   └── websocket.js
-        ├── components/
-        │   ├── Navbar.jsx
-        │   ├── NotificationPanel.jsx
-        │   └── ProtectedRoute.jsx
-        └── pages/
-            ├── Login.jsx
-            ├── Register.jsx
-            ├── Dashboard.jsx
-            ├── Users.jsx
-            ├── CreateTask.jsx
-            ├── AssignTask.jsx
-            ├── EditTask.jsx
-            ├── KanbanBoard.jsx
-            ├── Approval.jsx
-            ├── Activity.jsx
-            ├── Billing.jsx
-            ├── PaymentSuccess.jsx
-            └── OAuthCallback.jsx
+|-- README.md
+|-- TODO.md
+|-- .gitignore
+|-- uploads/
+|-- backend/
+|   |-- .env.example
+|   |-- alembic.ini
+|   |-- pytest.ini
+|   |-- requirements.txt
+|   |-- alembic/
+|   |   |-- env.py
+|   |   |-- README
+|   |   |-- script.py.mako
+|   |   `-- versions/
+|   |       |-- f02abd7a5893_phase_10c.py
+|   |       `-- database migration files
+|   |-- app/
+|   |   |-- main.py
+|   |   |-- core/
+|   |   |   |-- cache.py
+|   |   |   |-- celery_app.py
+|   |   |   |-- config.py
+|   |   |   |-- dependencies.py
+|   |   |   |-- permissions.py
+|   |   |   |-- rate_limit.py
+|   |   |   |-- security.py
+|   |   |   |-- tenant_guard.py
+|   |   |   `-- validators/
+|   |   |-- db/
+|   |   |   |-- database.py
+|   |   |   `-- schema_compat.py
+|   |   |-- enums/
+|   |   |   |-- attendance.py
+|   |   |   |-- document.py
+|   |   |   |-- meeting.py
+|   |   |   |-- project.py
+|   |   |   |-- team.py
+|   |   |   `-- init.py
+|   |   |-- middleware/
+|   |   |   |-- audit_middleware.py
+|   |   |   `-- tenant_isolation.py
+|   |   |-- models/
+|   |   |   |-- user.py
+|   |   |   |-- task.py
+|   |   |   |-- organization.py
+|   |   |   |-- workspace.py
+|   |   |   |-- channel.py
+|   |   |   |-- team.py
+|   |   |   |-- team_member.py
+|   |   |   |-- project.py
+|   |   |   |-- project_team.py
+|   |   |   |-- project_document.py
+|   |   |   |-- meeting.py
+|   |   |   |-- meeting_attendee.py
+|   |   |   |-- meeting_note.py
+|   |   |   |-- ai_meeting_summary.py
+|   |   |   `-- approval, SLA, notification, audit, and document models
+|   |   |-- repository/
+|   |   |   |-- team_repository.py
+|   |   |   |-- team_member_repository.py
+|   |   |   |-- project_repository.py
+|   |   |   |-- project_team_repository.py
+|   |   |   |-- project_document_repository.py
+|   |   |   |-- meeting_repository.py
+|   |   |   |-- meeting_attendee_repository.py
+|   |   |   |-- meeting_note_repository.py
+|   |   |   |-- ai_meeting_summary_repository.py
+|   |   |   `-- existing auth, task, workspace, channel, and tenant repositories
+|   |   |-- routers/
+|   |   |   |-- auth.py
+|   |   |   |-- tasks.py
+|   |   |   |-- users.py
+|   |   |   |-- workspace.py
+|   |   |   |-- channel.py
+|   |   |   |-- team.py
+|   |   |   |-- team_member.py
+|   |   |   |-- project.py
+|   |   |   |-- project_team.py
+|   |   |   |-- project_document.py
+|   |   |   |-- meeting.py
+|   |   |   |-- meeting_attendee.py
+|   |   |   |-- meeting_note.py
+|   |   |   |-- ai_meeting_summary.py
+|   |   |   |-- calender.py
+|   |   |   |-- workload.py
+|   |   |   `-- existing approval, SLA, audit, payment, notification, and tenant routers
+|   |   |-- schemas/
+|   |   |   |-- team.py
+|   |   |   |-- team_member.py
+|   |   |   |-- project.py
+|   |   |   |-- project_team.py
+|   |   |   |-- project_document.py
+|   |   |   |-- meeting.py
+|   |   |   |-- meeting_attendee.py
+|   |   |   |-- meeting_note.py
+|   |   |   |-- ai_meeting_summary.py
+|   |   |   `-- existing schemas
+|   |   |-- services/
+|   |   |   |-- team_service.py
+|   |   |   |-- team_member_service.py
+|   |   |   |-- project_service.py
+|   |   |   |-- project_team_service.py
+|   |   |   |-- project_document_service.py
+|   |   |   |-- meeting_service.py
+|   |   |   |-- meeting_attendee_service.py
+|   |   |   |-- meeting_note_service.py
+|   |   |   |-- ai_meeting_summary_service.py
+|   |   |   |-- calender_service.py
+|   |   |   |-- workload_service.py
+|   |   |   `-- existing services
+|   |   |-- tasks/
+|   |   `-- utils/
+|   `-- tests/
+|       |-- test_approval_escalation_delegation.py
+|       |-- test_permissions.py
+|       |-- test_slug.py
+|       `-- test_tenant_guard.py
+`-- frontend/
+    |-- .env
+    |-- package.json
+    |-- package-lock.json
+    |-- vite.config.js
+    |-- tailwind.config.js
+    |-- eslint.config.js
+    |-- index.html
+    |-- public/
+    |   |-- favicon.svg
+    |   `-- icons.svg
+    `-- src/
+        |-- main.jsx
+        |-- App.jsx
+        |-- index.css
+        |-- api/
+        |   |-- audit.js
+        |   |-- axios.js
+        |   |-- delegation.js
+        |   |-- escalation.js
+        |   |-- notifications.js
+        |   |-- pagination.js
+        |   |-- sla.js
+        |   `-- websocket.js
+        |-- components/
+        |   |-- AuthContext.jsx
+        |   |-- authContextValue.js
+        |   |-- useAuth.js
+        |   |-- ProtectedRoute.jsx
+        |   |-- Navbar.jsx
+        |   |-- NotificationPanel.jsx
+        |   |-- common UI components
+        |   |-- navigation/
+        |   `-- collaboration/
+        |       |-- approvaldocuments/
+        |       |-- channel/
+        |       |-- member/
+        |       |-- taskdocuments/
+        |       |-- user/
+        |       `-- workspace/
+        |-- layouts/
+        |   `-- MainLayout.jsx
+        |-- pages/
+        |   |-- Dashboard.jsx
+        |   |-- Login.jsx
+        |   |-- Register.jsx
+        |   |-- Users.jsx
+        |   |-- CreateTask.jsx
+        |   |-- AssignTask.jsx
+        |   |-- EditTask.jsx
+        |   |-- KanbanBoard.jsx
+        |   |-- Approval.jsx
+        |   |-- Activity.jsx
+        |   |-- Billing.jsx
+        |   |-- AuditLogs.jsx
+        |   |-- SLADashboard.jsx
+        |   |-- SLARules.jsx
+        |   `-- collaboration/
+        |       |-- Workspaces.jsx
+        |       |-- WorkspaceDetails.jsx
+        |       |-- Channels.jsx
+        |       |-- ChannelDetails.jsx
+        |       |-- Members.jsx
+        |       |-- Organizations.jsx
+        |       |-- OrganizationDetails.jsx
+        |       |-- OrganizationOnboarding.jsx
+        |       |-- OrganizationSettings.jsx
+        |       |-- OrganizationUsers.jsx
+        |       `-- UsageDashboard.jsx
+        `-- services/
+            |-- auth/
+            `-- collaboration/
 ```
+
+Generated folders such as `.git`, `node_modules`, `venv`, `dist`, `__pycache__`, and `.pytest_cache` are intentionally omitted from this tree.
 
 ## User Roles
 

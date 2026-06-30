@@ -22,8 +22,6 @@ export default function Dashboard() {
   const [user, setUser] = useState(null);
 
   const [notifications, setNotifications] = useState([]);
-  const [activities, setActivities] = useState([]);
-
   const [error, setError] = useState("");
 
   const navigate = useNavigate();
@@ -35,13 +33,11 @@ export default function Dashboard() {
         userResponse,
         tasksResponse,
         summaryResponse,
-        auditResponse,
         notificationResponse,
       ] = await Promise.all([
         API.get("/auth/me"),
         API.get("/tasks/"),
         API.get("/dashboard/summary"),
-        API.get("/audit-logs/"),
         API.get("/notifications/"),
       ]);
 
@@ -51,9 +47,6 @@ export default function Dashboard() {
       setTasks(getPageItems(tasksResponse.data));
 
       setSummary(summaryResponse.data);
-
-      // FIXED PAGINATION RESPONSE
-      setActivities(getPageItems(auditResponse.data));
 
       // FIXED PAGINATION RESPONSE
       setNotifications(getPageItems(notificationResponse.data));

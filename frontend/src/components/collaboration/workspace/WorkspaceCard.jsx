@@ -1,10 +1,4 @@
-import {
-  Archive,
-  RotateCcw,
-  Users,
-  Calendar,
-  Pencil,
-} from "lucide-react";
+import { Archive, RotateCcw, Users, Calendar, Pencil } from "lucide-react";
 
 import { Link } from "react-router-dom";
 
@@ -13,22 +7,14 @@ import {
   restoreWorkspace,
 } from "../../../services/collaboration/workspaceService";
 
-export default function WorkspaceCard({
-  workspace,
-  onRefresh,
-  onEdit,
-}) {
+export default function WorkspaceCard({ workspace, onRefresh, onEdit }) {
   const handleArchive = async () => {
-    const confirmed = window.confirm(
-      `Archive workspace "${workspace.name}"?`
-    );
+    const confirmed = window.confirm(`Archive workspace "${workspace.name}"?`);
 
     if (!confirmed) return;
 
     try {
-      await archiveWorkspace(
-        workspace.id
-      );
+      await archiveWorkspace(workspace.id);
 
       await onRefresh();
     } catch (error) {
@@ -38,9 +24,7 @@ export default function WorkspaceCard({
 
   const handleRestore = async () => {
     try {
-      await restoreWorkspace(
-        workspace.id
-      );
+      await restoreWorkspace(workspace.id);
 
       await onRefresh();
     } catch (error) {
@@ -58,34 +42,25 @@ export default function WorkspaceCard({
         p-5
         transition
         hover:shadow-md
-        ${
-          workspace.is_archived
-            ? "opacity-75"
-            : ""
-        }
+        ${workspace.is_archived ? "opacity-75" : ""}
       `}
     >
       <div className="flex justify-between items-start">
         <div className="flex gap-3">
-          <div
-            className="
-              w-12 h-12
-              rounded-full
-              bg-blue-100
-              flex items-center justify-center
-              font-bold
-              text-blue-700
-            "
-          >
-            {workspace.name
-              ?.charAt(0)
-              ?.toUpperCase()}
-          </div>
+          {workspace.avatar_url ? (
+            <img
+              src={workspace.avatar_url}
+              alt={workspace.name}
+              className="w-12 h-12 rounded-full object-cover"
+            />
+          ) : (
+            <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center font-bold text-blue-700">
+              {workspace.name?.charAt(0)?.toUpperCase()}
+            </div>
+          )}
 
           <div>
-            <Link
-              to={`/workspaces/${workspace.id}`}
-            >
+            <Link to={`/workspaces/${workspace.id}`}>
               <h3
                 className="
                   font-bold
@@ -98,8 +73,7 @@ export default function WorkspaceCard({
             </Link>
 
             <p className="text-sm text-gray-500">
-              {workspace.description ||
-                "No description"}
+              {workspace.description || "No description"}
             </p>
           </div>
         </div>
@@ -107,8 +81,7 @@ export default function WorkspaceCard({
         <div className="flex flex-col gap-2 items-end">
           <span
             className={`px-2 py-1 text-xs rounded-full ${
-              workspace.visibility ===
-              "PUBLIC"
+              workspace.visibility === "PUBLIC"
                 ? "bg-green-100 text-green-700"
                 : "bg-orange-100 text-orange-700"
             }`}
@@ -150,20 +123,14 @@ export default function WorkspaceCard({
         {workspace.created_at && (
           <div className="flex items-center gap-1">
             <Calendar size={16} />
-            <span>
-              {new Date(
-                workspace.created_at
-              ).toLocaleDateString()}
-            </span>
+            <span>{new Date(workspace.created_at).toLocaleDateString()}</span>
           </div>
         )}
       </div>
 
       <div className="mt-5 flex gap-2">
         <button
-          onClick={() =>
-            onEdit(workspace)
-          }
+          onClick={() => onEdit(workspace)}
           className="
             flex items-center gap-2
             px-3 py-2

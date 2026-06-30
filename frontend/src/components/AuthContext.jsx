@@ -1,16 +1,14 @@
 import {
-  createContext,
-  useContext,
   useEffect,
   useState,
 } from "react";
+
+import { AuthContext } from "./authContextValue";
 
 import {
   getMe,
   login as loginService,
 } from "../services/auth/authService";
-
-const AuthContext = createContext(null);
 
 export function AuthProvider({
   children,
@@ -123,17 +121,4 @@ export function AuthProvider({
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth() {
-  const context =
-    useContext(AuthContext);
-
-  if (!context) {
-    throw new Error(
-      "useAuth must be used within AuthProvider"
-    );
-  }
-
-  return context;
 }

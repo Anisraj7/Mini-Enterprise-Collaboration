@@ -171,4 +171,26 @@ export const navSections = [
       },
     ],
   },
+
+      {
+      label: "Projects",
+      children: [
+        {
+          label: "Teams",
+          path: "/teams",
+        },
+        {
+          label: "Projects",
+          path: "/projects",
+        },
+        {
+          label: "Meetings",
+          path: "/meetings",
+        },
+        {
+          label: "Workload",
+          path: "/projects",
+        },
+      ],
+    }
 ];

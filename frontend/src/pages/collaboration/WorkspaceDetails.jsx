@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Users, MessageSquare, Lock, Globe } from "lucide-react";
+import { Users,UserPlus, MessageSquare, Lock, Globe } from "lucide-react";
 
 import { getChannels } from "../../services/collaboration/channelService";
 import { getMembers } from "../../services/collaboration/memberService";
@@ -16,6 +16,7 @@ export default function WorkspaceDetails() {
   const [channels, setChannels] = useState([]);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false);
 
   const [activeTab, setActiveTab] = useState("overview");
 
@@ -274,9 +275,26 @@ export default function WorkspaceDetails() {
               </p>
             </div>
 
-            <span className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm">
-              {members.length} Members
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm">
+                {members.length} Members
+              </span>
+
+              <button
+                onClick={() => setShowAddMemberModal(true)}
+                  className="
+                  flex items-center gap-2
+                  px-4 py-2
+                  bg-indigo-600
+                  text-white
+                  rounded-lg
+                  hover:bg-indigo-700
+                "
+              >
+                <UserPlus size={18} />
+                Add Member
+              </button>
+            </div>
           </div>
 
           {members.length === 0 ? (

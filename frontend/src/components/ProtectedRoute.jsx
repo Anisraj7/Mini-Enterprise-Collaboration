@@ -2,7 +2,7 @@ import { Navigate } from "react-router-dom";
 
 import {
   useAuth,
-} from "./AuthContext";
+} from "./useAuth";
 
 export default function ProtectedRoute({
   children,

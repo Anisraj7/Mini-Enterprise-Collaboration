@@ -110,6 +110,12 @@ class Channel(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    
+    project_id: Mapped[int | None] = mapped_column(
+        ForeignKey("projects.id"),
+        nullable=True,
+        index=True
+    )
 
     __table_args__ = (
         UniqueConstraint(

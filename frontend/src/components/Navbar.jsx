@@ -17,8 +17,7 @@ export default function Navbar() {
 
   const [user, setUser] = useState(null);
 
-  const [notificationsOpen, setNotificationsOpen] =
-    useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -58,25 +57,53 @@ export default function Navbar() {
           <div
             className="cursor-pointer"
             onClick={() => {
-              if (
-                user?.role ===
-                "super_admin"
-              ) {
+              if (user?.role === "super_admin") {
                 navigate("/organizations");
               } else {
                 navigate("/dashboard");
               }
             }}
           >
-            <h1
-              className="
-              text-xl
-              font-bold
-              text-cyan-400
-            "
+            <div
+              className="cursor-pointer"
+              onClick={() => {
+                if (user?.role === "super_admin") {
+                  navigate("/organizations");
+                } else {
+                  navigate("/dashboard");
+                }
+              }}
             >
-              TaskFlow
-            </h1>
+              <div className="flex flex-col">
+                <h1
+                  className="
+        text-lg
+        font-bold
+        text-cyan-400
+        leading-tight
+      "
+                >
+                  {user?.organization_name ||
+                    user?.organization?.name ||
+                    (user?.role === "super_admin"
+                      ? "Mini Enterprise Collaboration"
+                      : "Organization")}
+                </h1>
+
+                <p
+                  className="
+        text-xs
+        text-slate-300
+      "
+                >
+                  {(user?.full_name || user?.name || user?.email || "").toUpperCase()}
+
+                  {" • "}
+
+                  {(user?.role || "").replaceAll("_", " ").toLowerCase()}
+                </p>
+              </div>
+            </div>
           </div>
 
           <NavMenu user={user} />
@@ -87,13 +114,7 @@ export default function Navbar() {
             gap-3
           "
           >
-            <button
-              onClick={() =>
-                setNotificationsOpen(
-                  !notificationsOpen
-                )
-              }
-            >
+            <button onClick={() => setNotificationsOpen(!notificationsOpen)}>
               <Bell size={18} />
             </button>
 
@@ -112,9 +133,7 @@ export default function Navbar() {
         </div>
       </div>
 
-      {notificationsOpen && (
-        <NotificationPanel />
-      )}
+      {notificationsOpen && <NotificationPanel />}
     </nav>
   );
 }

@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { FcGoogle } from "react-icons/fc";
 import { FiMail, FiLock, FiEye, FiEyeOff } from "react-icons/fi";
 
-import { useAuth } from "../components/AuthContext";
+import { useAuth } from "../components/useAuth";
 
 export default function Login() {
   const navigate = useNavigate();

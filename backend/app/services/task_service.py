@@ -333,6 +333,7 @@ def create_task_service(
         workspace_user_ids(
             db,
             current_user,
+            workspace_id,
         )
     )
 
